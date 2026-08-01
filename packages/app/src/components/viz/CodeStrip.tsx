@@ -99,7 +99,18 @@ export function CodeStrip({
   useEffect(() => {
     const view = viewRef.current;
     if (!view || offsets === null || offsets > view.state.doc.length) return;
-    view.dispatch({ effects: EditorView.scrollIntoView(offsets, { y: 'center' }) });
+    // Scroll ONLY this editor's own viewport. EditorView.scrollIntoView walks up
+    // the DOM and scrolls ancestor scrollers as well, so during playback it drags
+    // the whole page back to the source panel and the reader cannot look at
+    // anything below it (token stream, tables) while stepping.
+    const scroller = view.scrollDOM;
+    if (scroller.scrollHeight <= scroller.clientHeight) return; // nothing to scroll
+    const block = view.lineBlockAt(offsets);
+    const target = block.top - (scroller.clientHeight - block.height) / 2;
+    scroller.scrollTop = Math.max(
+      0,
+      Math.min(target, scroller.scrollHeight - scroller.clientHeight),
+    );
   }, [offsets, source]);
 
   return (
