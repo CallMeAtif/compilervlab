@@ -37,7 +37,7 @@ export function Ll1ParseView(ctx: ViewContext) {
       <TopDownBlocked
         ctx={ctx}
         algorithm="predictive parse"
-        onGoToTransforms={() => ctx.selectAlgo('transforms')}
+        origin="ll1-parse"
       />
     );
   }

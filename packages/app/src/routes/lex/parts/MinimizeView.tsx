@@ -28,8 +28,10 @@ import type { Stepper } from '../../../lib/useStepper';
 import { useLexTrace } from '../useLexTrace';
 import { dfaFor, type LexTokenClass } from '../tokenClasses';
 import { dfaGraph, isHeavyGraph, showSymbol } from '../graph';
+import { useLexemeRun, type DfaShape } from '../lexemeRun';
 import { HeavyGate, LoadingPanel, Note, Panel, Reveal, TraceSplit, UnavailablePanel } from './ui';
 import { AutomatonLegend, GroupSwatch, StatChips } from './bits';
+import { LexemeRun } from './LexemeRun';
 
 const DEAD = '∅';
 
@@ -195,9 +197,11 @@ function MinResultTable({
 function MinimizeBody({
   stepper,
   dfa,
+  cls,
 }: {
   stepper: Stepper<MinimizeState, MinimizeEvent>;
   dfa: Dfa;
+  cls: LexTokenClass;
 }) {
   const { trace, state, index, currentStep } = stepper;
   const e = currentStep?.event ?? null;
@@ -256,6 +260,20 @@ function MinimizeBody({
     // ElkGraph does not hash reactNode, so the layout is untouched.
     [dfa, missing, acceptOf, groupOf],
   );
+
+  // The machine the reader's own lexeme is walked over is the one THIS panel
+  // draws — the DFA under refinement, dead state included, so a character with
+  // no transition falls into ∅ exactly as the drawing says it does.
+  const walkable = useMemo<DfaShape>(
+    () => ({
+      start: dfa.start,
+      trans: [...dfa.trans, ...missing],
+      isAccepting: (id) => acceptOf(id) !== null,
+    }),
+    [dfa, missing, acceptOf],
+  );
+  const run = useLexemeRun(cls, walkable);
+  const walk = run.walk;
 
   const splitting = e && e.kind === 'split' ? e.from : null;
   const currentNodes = useMemo(() => {
@@ -331,7 +349,11 @@ function MinimizeBody({
           <ElkGraph
             nodes={graph.nodes}
             edges={graph.edges}
-            currentNodeIds={currentNodes}
+            // A picked lexeme takes the accent: its path is the current thing.
+            // The step's own focus keeps a weight, one tier down.
+            currentNodeIds={walk ? walk.nodeIds : currentNodes}
+            currentEdgeIds={walk ? walk.edgeIds : undefined}
+            visitedIds={walk ? currentNodes : undefined}
             direction="RIGHT"
             height="24rem"
             // The group swatches are the whole point of this graph and they
@@ -340,6 +362,7 @@ function MinimizeBody({
             className="lex-graph"
           />
         </HeavyGate>
+        <LexemeRun cls={cls} model={run} isAccepting={(id) => acceptOf(id) !== null} />
       </Panel>
 
       <Panel
@@ -400,7 +423,7 @@ export function MinimizeView({
         { label: 'final table', predicate: (s) => s.event.kind === 'finalTable' },
       ]}
     >
-      {(stepper) => <MinimizeBody stepper={stepper} dfa={dfa} />}
+      {(stepper) => <MinimizeBody stepper={stepper} dfa={dfa} cls={cls} />}
     </TraceSplit>
   );
 }

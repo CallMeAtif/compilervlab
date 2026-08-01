@@ -20,6 +20,10 @@ export interface ViewContext {
   source: string;
   /** Terminal names of `source` (study grammars only; '' for the C grammars). */
   sourceTerminals: readonly string[];
-  /** Switch the page to another algorithm (used by the educational empty states). */
-  selectAlgo: (algo: AlgoId) => void;
+  /**
+   * Switch the page to another algorithm (used by the educational empty
+   * states). `extra` may carry the grammar to switch to at the same time and
+   * the `?from=` breadcrumb the transform view reads to get the reader back.
+   */
+  selectAlgo: (algo: AlgoId, extra?: { grammar?: GrammarId; from?: AlgoId | null }) => void;
 }

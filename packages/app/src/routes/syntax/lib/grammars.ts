@@ -18,6 +18,8 @@ export interface GrammarMeta {
   id: GrammarId;
   /** Selector label. */
   label: string;
+  /** Two-or-three-word name, for buttons and running text. */
+  short: string;
   /** One line: what this grammar is for. */
   blurb: string;
   /** Terminals are whitespace-separated names (study grammars) or C source. */
@@ -30,6 +32,7 @@ export const GRAMMARS: readonly GrammarMeta[] = [
   {
     id: 'c-subset',
     label: 'C subset (pipeline)',
+    short: 'C subset',
     blurb:
       'The grammar this lab’s compiler really parses. Left-recursive and LALR(1) apart from the intentional dangling-else conflict (§4.8.2).',
     input: 'c',
@@ -38,6 +41,7 @@ export const GRAMMARS: readonly GrammarMeta[] = [
   {
     id: 'c-subset-ll',
     label: 'C subset — LL-ready',
+    short: 'C subset — LL-ready',
     blurb:
       'The same language after Algorithm 4.19 (left-recursion elimination) then Algorithm 4.21 (left factoring) — the grammar the top-down parsers can use.',
     input: 'c',
@@ -46,6 +50,7 @@ export const GRAMMARS: readonly GrammarMeta[] = [
   {
     id: 'dragon-4.1',
     label: 'Grammar 4.1 — expressions',
+    short: 'Grammar 4.1',
     blurb:
       'E → E + T | T, T → T * F | F, F → ( E ) | id. The book’s running example for LR(0)/SLR (Fig 4.31, Fig 4.37, Fig 4.38).',
     input: 'terminals',
@@ -54,6 +59,7 @@ export const GRAMMARS: readonly GrammarMeta[] = [
   {
     id: 'dragon-4.28',
     label: 'Grammar 4.28 — LL(1) expressions',
+    short: 'Grammar 4.28',
     blurb:
       'Grammar 4.1 with the left recursion removed. The running example for FIRST/FOLLOW (Example 4.30) and the predictive table (Fig 4.17).',
     input: 'terminals',
@@ -62,6 +68,7 @@ export const GRAMMARS: readonly GrammarMeta[] = [
   {
     id: 'dragon-4.55',
     label: 'Grammar 4.55 — LR(1) / LALR',
+    short: 'Grammar 4.55',
     blurb:
       'S → C C, C → c C | d. Small enough that the canonical LR(1) collection (Fig 4.41) and its LALR merge (Fig 4.43) fit on one screen.',
     input: 'terminals',
@@ -70,6 +77,42 @@ export const GRAMMARS: readonly GrammarMeta[] = [
 ];
 
 export const DEFAULT_GRAMMAR: GrammarId = 'dragon-4.1';
+
+/**
+ * The bundled grammar that IS this one after the top-down transforms, so the
+ * transform view can hand the reader something the predictive parsers accept.
+ *
+ * These are not approximations. `eliminateLeftRecursion(Grammar 4.1)` returns
+ * Grammar 4.28 exactly (the golden assertion in core/grammar/transforms.ts),
+ * and `c-subset-ll` is literally `llReadyCGrammar()` — Algorithm 4.19 then
+ * Algorithm 4.21 over the pipeline grammar. A grammar with no left recursion
+ * is already its own answer.
+ */
+const LL_READY: Readonly<Record<GrammarId, GrammarId>> = {
+  'dragon-4.1': 'dragon-4.28',
+  'dragon-4.28': 'dragon-4.28',
+  'dragon-4.55': 'dragon-4.55',
+  'c-subset': 'c-subset-ll',
+  'c-subset-ll': 'c-subset-ll',
+};
+
+export function llReadyGrammar(id: GrammarId): GrammarId {
+  return LL_READY[id] ?? id;
+}
+
+/**
+ * Why the transform view hands over a different grammar. ≤10 words, true at
+ * EITHER transform stage, and only when the id actually changes — naming the
+ * destination is the whole point.
+ */
+const LL_READY_REASON: Partial<Record<GrammarId, string>> = {
+  'dragon-4.1': 'Grammar 4.28 is Grammar 4.1 after Algorithm 4.19.',
+  'c-subset': 'C subset — LL-ready: Algorithms 4.19 and 4.21 applied.',
+};
+
+export function llReadyReason(id: GrammarId): string | null {
+  return LL_READY_REASON[id] ?? null;
+}
 
 export function isGrammarId(v: string | null | undefined): v is GrammarId {
   return typeof v === 'string' && (GRAMMAR_IDS as readonly string[]).includes(v);

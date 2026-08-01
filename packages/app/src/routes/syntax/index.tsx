@@ -273,7 +273,7 @@ function AlgorithmTabs({ value, onChange }: { value: AlgoId; onChange: (a: AlgoI
 
 export default function SyntaxPhaseRoute() {
   const url = useSyntaxUrl();
-  const { grammar: grammarId, algo, stage, table, lr1View } = url;
+  const { grammar: grammarId, algo, stage, table, lr1View, from } = url;
 
   const compilation = useCompilationStore((s) => s.compilation);
   const stale = useCompilationStore((s) => s.stale);
@@ -317,7 +317,13 @@ export default function SyntaxPhaseRoute() {
     setUrl.current({ ...patch, step: null });
   }, []);
 
-  const selectAlgo = useCallback((a: AlgoId) => reselect({ algo: a }), [reselect]);
+  // `extra` lets an empty state hand over the grammar and the ?from= breadcrumb
+  // in the same click, so the address bar never shows a half-applied selection.
+  const selectAlgo = useCallback(
+    (a: AlgoId, extra?: { grammar?: GrammarId; from?: AlgoId | null }) =>
+      reselect({ ...extra, algo: a }),
+    [reselect],
+  );
 
   const ctx: ViewContext = useMemo(
     () => ({
@@ -402,7 +408,12 @@ export default function SyntaxPhaseRoute() {
 
         {algo === 'first-follow' && <FirstFollowView {...ctx} />}
         {algo === 'transforms' && (
-          <TransformsView ctx={ctx} stage={stage} onStage={(s: TransformStage) => reselect({ stage: s })} />
+          <TransformsView
+            ctx={ctx}
+            stage={stage}
+            onStage={(s: TransformStage) => reselect({ stage: s })}
+            from={from}
+          />
         )}
         {algo === 'll1-table' && <Ll1TableView {...ctx} />}
         {algo === 'll1-parse' && <Ll1ParseView {...ctx} />}

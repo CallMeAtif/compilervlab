@@ -38,7 +38,7 @@ export function RdView(ctx: ViewContext) {
       <TopDownBlocked
         ctx={ctx}
         algorithm="recursive-descent parser"
-        onGoToTransforms={() => ctx.selectAlgo('transforms')}
+        origin="rd"
       />
     );
   }

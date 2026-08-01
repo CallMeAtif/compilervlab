@@ -128,6 +128,15 @@ export function nfaGraph(
 
 export const dfaEdgeId = (from: string, to: string): string => `d:${from}->${to}`;
 
+/**
+ * Ceiling on a DRAWN transition label — the full condensed set goes to the
+ * chip's tooltip. The combined scanner DFA fans a start state out ten ways with
+ * a character list on every branch; at the old 26 the labels were wider than
+ * the states they sat between. Well under ElkGraph's own EDGE_LABEL_MAX_CHARS,
+ * because "a, e, f, i +5" is the reading and the list is the reference.
+ */
+const DFA_LABEL_MAX_LEN = 15;
+
 export interface DfaGraphOptions {
   start: string | null;
   /** Extra nodes that exist but are not D-states (the dead state ∅). */
@@ -171,12 +180,17 @@ export function dfaGraph(
     });
   }
 
-  const edges: ElkGraphEdge[] = [...bySymbolPair.entries()].map(([id, e]) => ({
-    id,
-    source: e.from,
-    target: e.to,
-    label: condenseSymbols(e.symbols),
-  }));
+  const edges: ElkGraphEdge[] = [...bySymbolPair.entries()].map(([id, e]) => {
+    const full = condenseSymbols(e.symbols, Number.POSITIVE_INFINITY);
+    const shown = condenseSymbols(e.symbols, DFA_LABEL_MAX_LEN);
+    return {
+      id,
+      source: e.from,
+      target: e.to,
+      label: shown,
+      ...(full === shown ? {} : { title: full }),
+    };
+  });
 
   return { nodes, edges };
 }

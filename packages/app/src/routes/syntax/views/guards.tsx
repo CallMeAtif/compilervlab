@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useCompilationStore, phaseDiagnostics } from '../../../store/compilation';
 import { EmptyState, Note, TextButton, Diagnostics } from '../components/ui';
 import { grammarMeta } from '../lib/grammars';
+import type { AlgoId } from '../lib/algorithms';
 import type { ViewContext } from '../lib/view';
 
 export function isTopDownBlocked(ctx: ViewContext): boolean {
@@ -17,15 +18,22 @@ export function isTopDownBlocked(ctx: ViewContext): boolean {
  * A left-recursive grammar makes both top-down parsers diverge — the procedure
  * for A calls itself without consuming input (§4.3.3). Running it would hang the
  * worker, so the view refuses and points at Algorithm 4.19 instead.
+ *
+ * The button goes to the TRANSFORM VIEW, so it is labelled as what it does —
+ * watch the algorithm run. It carries `?from=` so that view can send the reader
+ * back here on a grammar the parser accepts once the rewrite is done; the label
+ * and the destination have to agree, and a reader who lands on a step-by-step
+ * rewrite after being promised a parse has been lied to.
  */
 export function TopDownBlocked({
   ctx,
   algorithm,
-  onGoToTransforms,
+  origin,
 }: {
   ctx: ViewContext;
   algorithm: string;
-  onGoToTransforms: () => void;
+  /** The refusing algorithm — the one the transform view returns to. */
+  origin: AlgoId;
 }) {
   const lr = ctx.leftRecursive;
   return (
@@ -33,8 +41,12 @@ export function TopDownBlocked({
       title={`Left recursive. No ${algorithm} can run on it.`}
       actions={
         <>
-          <TextButton emphasis onClick={onGoToTransforms}>
-            Eliminate the left recursion (Algorithm 4.19)
+          <TextButton
+            emphasis
+            ariaLabel="Watch Algorithm 4.19 eliminate the left recursion"
+            onClick={() => ctx.selectAlgo('transforms', { from: origin })}
+          >
+            Watch Algorithm 4.19
           </TextButton>
         </>
       }

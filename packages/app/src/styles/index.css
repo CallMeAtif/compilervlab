@@ -393,6 +393,59 @@
     color: var(--ink-faint);
     box-shadow: none;
   }
+
+  /*
+   * Edge-label chip. Positioned by ElkGraph at ELK's own label coordinates —
+   * inside the gap the layout reserved for it — so this rule only has to make
+   * the thing read as a LABEL rather than as ink mixed into the diagram: an
+   * opaque sheet-coloured plate and a hairline, so an edge that runs under it
+   * passes behind it. Its geometry is mirrored by `estimateEdgeLabelSize`
+   * (6.6px/char at 11px + 14px of padding and rule); change one, change both.
+   *
+   * `--ink-muted` on `--surface` measures 7.52:1 dark / 7.17:1 light, the
+   * current chip's `--ink` 14.34 / 16.23, and the ghost's `--ink-faint`
+   * 6.35 / 6.04 — text contrast, not decoration.
+   */
+  .elk-edge-label {
+    position: absolute;
+    white-space: nowrap;
+    /* `--control` (3.95:1 dark / 4.09:1 light), not `--line-strong` (2.34:1),
+       for the same reason `.elk-node` uses it: this rule is the only thing
+       separating an opaque plate from the edges crossing behind it, so it is a
+       meaningful graphical object and owes WCAG 1.4.11 its 3:1. */
+    border: 1px solid var(--control);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 1px 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--ink-muted);
+    /* The renderer layer is inert; the chip opts back in so a clipped label can
+       reveal the rest of itself on hover. Panning still works: the event
+       bubbles to the zoom container either way. */
+    pointer-events: auto;
+    transition:
+      border-color var(--dur) var(--ease),
+      color var(--dur) var(--ease);
+  }
+  .elk-edge-label.is-visited {
+    border-color: var(--ink-faint);
+  }
+  /* Accent ring + full-strength ink, matching `.elk-node.is-current`. */
+  .elk-edge-label.is-current {
+    border-color: var(--accent);
+    color: var(--ink);
+  }
+  /* Same dash-as-signifier reasoning as the ghost node and the ghost edge. */
+  .elk-edge-label.is-hidden {
+    border-style: dashed;
+    border-color: var(--control);
+    color: var(--ink-faint);
+  }
+  .elk-edge-label.is-clipped {
+    cursor: help;
+  }
 }
 
 /*

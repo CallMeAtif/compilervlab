@@ -4,7 +4,7 @@
  * re-run layout — emphasis only, per the PLAN.md layout-stability rule.
  *
  * What IS structural (re-runs ELK): the node/edge sets, their ids, labels,
- * kinds, resolved box sizes and the direction.
+ * kinds, resolved box sizes (nodes AND edge labels) and the direction.
  * What is NOT (re-styles only): `currentNodeIds`, `currentEdgeIds`,
  * `visitedIds`, `hiddenIds`, `nodeClassName`, `edgeClassName`, `reactNode`.
  *
@@ -26,16 +26,20 @@ import {
 import {
   ReactFlow,
   Background,
+  BaseEdge,
   Controls,
+  EdgeLabelRenderer,
   Handle,
   Position,
+  getBezierPath,
   type Edge,
+  type EdgeProps,
   type Node,
   type NodeProps,
   type ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { ElkNode } from 'elkjs/lib/elk.bundled.js';
+import type { ElkEdgeSection, ElkNode, ElkPoint } from 'elkjs/lib/elk.bundled.js';
 import { clsx } from 'clsx';
 import { useFullscreen } from '../../lib/useFullscreen';
 import { FullscreenChrome } from './FullscreenChrome';
@@ -68,7 +72,14 @@ export interface ElkGraphEdge {
   id?: string;
   source: string;
   target: string;
+  /**
+   * Short text drawn on the edge. ELK reserves a box for it, so it is a LAYOUT
+   * input: it is hashed, and anything longer than `EDGE_LABEL_MAX_CHARS` is
+   * clipped to that (the untruncated string stays reachable through `title`).
+   */
   label?: string;
+  /** Full text behind the clipped label, shown as the chip's native tooltip. */
+  title?: string;
 }
 
 export interface ElkGraphProps {
@@ -221,6 +232,166 @@ export function estimateNodeSize(n: ElkGraphNode): ElkGraphSize {
   return { width: Math.max(56, Math.min(260, len * 7.5 + 28)), height: 34 };
 }
 
+/*
+ * EDGE LABELS.
+ *
+ * The label is a real box in the layout, not an afterthought painted at the
+ * midpoint of whatever curve React Flow drew. ELK's layered algorithm turns a
+ * centred edge label into a LABEL DUMMY NODE, so a labelled edge is routed
+ * through a layer that is as wide as the widest label in it — which is the only
+ * way a ten-way fan-out with `a, e, f, i, n +3` on every branch can be read at
+ * all. Before this, ELK was told nothing, reserved nothing, and React Flow put
+ * each label at its path midpoint: on the combined scanner DFA that midpoint
+ * was INSIDE the target state's box, so both the label and the state name were
+ * illegible.
+ *
+ * Two consequences worth knowing:
+ *  • label text and box are LAYOUT INPUTS, so they belong to the structural
+ *    hash — a graph whose labels change is a graph that must be laid out again;
+ *  • the chip is rendered at ELK's own label coordinates through
+ *    `<EdgeLabelRenderer>`, never as React Flow's `label` prop, or it would be
+ *    drawn twice and one of the two would be in the wrong place.
+ */
+
+/** Measured: the app's mono stack is 6.6px per character at 11px, exactly. */
+const EDGE_LABEL_CHAR_W = 6.6;
+/** `padding: 1px 6px` + the chip's two hairlines. */
+const EDGE_LABEL_PAD_X = 14;
+/** 11px × 1.3 line box + vertical padding + hairlines. */
+const EDGE_LABEL_HEIGHT = 19;
+
+/**
+ * Hard ceiling on a drawn edge label. A transition label is a hint, not a
+ * table: past this the chip is wider than the states it sits between and the
+ * layer reserved for it dwarfs the automaton. Callers with a domain-aware
+ * summary (lex condenses character sets to ranges and a `+N` count) should
+ * arrive already under it; this is the floor guarantee for everyone else.
+ */
+export const EDGE_LABEL_MAX_CHARS = 24;
+
+/** Deterministic — it feeds the layout hash. */
+export function clipEdgeLabel(text: string): string {
+  const chars = [...text];
+  return chars.length <= EDGE_LABEL_MAX_CHARS
+    ? text
+    : `${chars.slice(0, EDGE_LABEL_MAX_CHARS - 1).join('')}…`;
+}
+
+/** Box ELK must reserve for a drawn label. Deterministic, like `estimateNodeSize`. */
+export function estimateEdgeLabelSize(text: string): ElkGraphSize {
+  return {
+    width: Math.ceil([...text].length * EDGE_LABEL_CHAR_W) + EDGE_LABEL_PAD_X,
+    height: EDGE_LABEL_HEIGHT,
+  };
+}
+
+/**
+ * ELK's own route for one edge, as an SVG path.
+ *
+ * The edge has to be DRAWN where ELK routed it, not as React Flow's default
+ * handle-to-handle bezier, and the reason is the labels. ELK places a label on
+ * the route it computed; React Flow's bezier is a different curve entirely —
+ * on the LR(0) GOTO graph the two diverged by a third of the canvas and every
+ * label ended up floating in blank space, attributable to no edge at all. Two
+ * things come free with it: routes bend AROUND node boxes instead of through
+ * them, and a self-loop is a real loop instead of a degenerate zero-length
+ * bezier between one node's two handles.
+ *
+ * `elk.edgeRouting: SPLINES` returns a control polygon: the start point, then
+ * groups of three (two off-curve controls and the on-curve point they land on).
+ * A trailing pair or single point — ELK emits them for very short routes —
+ * degrades to a quadratic or a straight segment.
+ */
+function elkRoutePath(section: ElkEdgeSection): string {
+  const pts: ElkPoint[] = [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
+  const at = (p: ElkPoint) => `${p.x},${p.y}`;
+  let d = `M ${at(pts[0]!)}`;
+  let i = 1;
+  while (i < pts.length) {
+    const left = pts.length - i;
+    if (left >= 3) {
+      d += ` C ${at(pts[i]!)} ${at(pts[i + 1]!)} ${at(pts[i + 2]!)}`;
+      i += 3;
+    } else if (left === 2) {
+      d += ` Q ${at(pts[i]!)} ${at(pts[i + 1]!)}`;
+      i += 2;
+    } else {
+      d += ` L ${at(pts[i]!)}`;
+      i += 1;
+    }
+  }
+  return d;
+}
+
+interface LabEdgeData extends Record<string, unknown> {
+  label?: string;
+  /** Untruncated text, when the chip is showing less than the whole of it. */
+  title?: string;
+  /** ELK's route. Absent → fall back to React Flow's handle-to-handle bezier. */
+  path?: string;
+  /** ELK's own label centre, in flow coordinates. */
+  labelX?: number;
+  labelY?: number;
+  labelClass?: string;
+}
+
+/**
+ * ELK's route plus a label chip placed where ELK put it.
+ *
+ * `<EdgeLabelRenderer>` portals into a layer INSIDE React Flow's viewport
+ * transform, so a flow-coordinate `translate` lands the chip in the gap the
+ * layout reserved and it pans and zooms with the graph. The chip is opaque and
+ * ruled: an edge running under it reads as passing behind a label rather than
+ * through the middle of the text.
+ */
+function LabEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  markerEnd,
+  data,
+}: EdgeProps<Edge<LabEdgeData>>) {
+  const [bezier, midX, midY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  });
+  const label = data?.label;
+  return (
+    <>
+      <BaseEdge id={id} path={data?.path ?? bezier} markerEnd={markerEnd} />
+      {label !== undefined && label !== '' && (
+        <EdgeLabelRenderer>
+          <div
+            // The chip is portalled away from its edge's <g>, so it carries the
+            // edge id back — the only handle anything (a test, a hover) has to
+            // pair a label with the line it names.
+            data-edge={id}
+            className={clsx('elk-edge-label', data?.title && 'is-clipped', data?.labelClass)}
+            title={data?.title}
+            style={{
+              transform: `translate(-50%, -50%) translate(${data?.labelX ?? midX}px, ${
+                data?.labelY ?? midY
+              }px)`,
+            }}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+const edgeTypes = { lab: LabEdge };
+
 export function ElkGraph({
   nodes,
   edges,
@@ -262,6 +433,23 @@ export function ElkGraph({
   const sizeOf = (n: ElkGraphNode): ResolvedSize =>
     sizes.get(n.id) ?? { ...estimateNodeSize(n), declared: false };
 
+  // Drawn label text + the box ELK must keep free for it. Both are layout
+  // inputs, so they are resolved once here and hashed with the topology.
+  const labels = useMemo(() => {
+    const out = new Map<string, { text: string; title?: string } & ElkGraphSize>();
+    for (const e of edges) {
+      if (e.label === undefined || e.label === '') continue;
+      const text = clipEdgeLabel(e.label);
+      const full = e.title ?? e.label;
+      out.set(elkEdgeId(e), {
+        text,
+        ...(full === text ? {} : { title: full }),
+        ...estimateEdgeLabelSize(text),
+      });
+    }
+    return out;
+  }, [edges]);
+
   // Structural hash: layout re-runs ONLY when topology/labels/boxes change.
   const structuralHash = useMemo(
     () =>
@@ -272,15 +460,23 @@ export function ElkGraph({
             const s = sizeOf(n);
             return [n.id, n.label ?? '', n.kind ?? '', s.width, s.height];
           }),
-          edges.map((e) => [elkEdgeId(e), e.source, e.target, e.label ?? '']),
+          edges.map((e) => {
+            const id = elkEdgeId(e);
+            const l = labels.get(id);
+            return [id, e.source, e.target, l?.text ?? '', l?.width ?? 0, l?.height ?? 0];
+          }),
         ]),
       ),
-    [nodes, edges, direction, sizes],
+    [nodes, edges, direction, sizes, labels],
   );
 
   const [layout, setLayout] = useState<{
     hash: string;
     positions: ReadonlyMap<string, { x: number; y: number }>;
+    /** ELK's route per edge, as an SVG path in flow coordinates. */
+    routes: ReadonlyMap<string, string>;
+    /** Where ELK put each edge's label, centre-point, in flow coordinates. */
+    labelPositions: ReadonlyMap<string, { x: number; y: number }>;
   } | null>(null);
 
   // Keep latest props in refs so the async layout reads current data without
@@ -291,30 +487,58 @@ export function ElkGraph({
   edgesRef.current = edges;
   const sizesRef = useRef(sizes);
   sizesRef.current = sizes;
+  const labelsRef = useRef(labels);
+  labelsRef.current = labels;
 
   useEffect(() => {
     let cancelled = false;
     const graphNodes = nodesRef.current;
     const graphEdges = edgesRef.current;
     const graphSizes = sizesRef.current;
+    const graphLabels = labelsRef.current;
     const graph: ElkNode = {
       id: 'root',
       layoutOptions: {
         'elk.algorithm': 'layered',
         'elk.direction': direction,
-        'elk.layered.spacing.nodeNodeBetweenLayers': '48',
+        /*
+         * Halved once labels are in play, because the gap is then paid TWICE:
+         * a labelled edge is routed through a label layer, so two adjacent
+         * states are separated by gap + chip + gap rather than by gap. Left at
+         * 48 the LR(0) GOTO graph grew 40% wider and fitView answered by
+         * shrinking every state name past reading; the label layer is itself
+         * the separation, so 24 either side restores the old total.
+         */
+        'elk.layered.spacing.nodeNodeBetweenLayers': graphLabels.size > 0 ? '24' : '48',
         'elk.spacing.nodeNode': '24',
         'elk.edgeRouting': 'SPLINES',
+        /*
+         * Edge labels. CENTER placement is the whole mechanism — it is what
+         * makes layered insert a label dummy NODE per labelled edge, so the
+         * chips inherit `spacing.nodeNode` from each other and the layer they
+         * sit in is as wide as the widest of them. (It is also ELK's default;
+         * it is written out because everything here depends on it.) The
+         * spacing then lifts the chip clear of the line it names — measured,
+         * 6 puts the route exactly along the chip's rule, which reads as
+         * attached without any of the text sitting under the stroke.
+         */
+        'elk.edgeLabels.placement': 'CENTER',
+        'elk.spacing.edgeLabel': '6',
       },
       children: graphNodes.map((n) => {
         const s = graphSizes.get(n.id) ?? estimateNodeSize(n);
         return { id: n.id, width: s.width, height: s.height };
       }),
-      edges: graphEdges.map((e) => ({
-        id: elkEdgeId(e),
-        sources: [e.source],
-        targets: [e.target],
-      })),
+      edges: graphEdges.map((e) => {
+        const id = elkEdgeId(e);
+        const l = graphLabels.get(id);
+        return {
+          id,
+          sources: [e.source],
+          targets: [e.target],
+          ...(l ? { labels: [{ text: l.text, width: l.width, height: l.height }] } : {}),
+        };
+      }),
     };
     getElk()
       .then((elk) => elk.layout(graph))
@@ -324,7 +548,23 @@ export function ElkGraph({
         for (const child of res.children ?? []) {
           positions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
         }
-        setLayout({ hash: structuralHash, positions });
+        // Routes and label coordinates come back in the same frame as the
+        // children (all relative to `root`), so they are already flow
+        // coordinates. Labels address their TOP-LEFT; the chip is centred on
+        // its point, so convert here rather than at render time.
+        const routes = new Map<string, string>();
+        const labelPositions = new Map<string, { x: number; y: number }>();
+        for (const edge of res.edges ?? []) {
+          const section = edge.sections?.[0];
+          if (section) routes.set(edge.id, elkRoutePath(section));
+          const label = edge.labels?.[0];
+          if (!label || label.x === undefined || label.y === undefined) continue;
+          labelPositions.set(edge.id, {
+            x: label.x + (label.width ?? 0) / 2,
+            y: label.y + (label.height ?? 0) / 2,
+          });
+        }
+        setLayout({ hash: structuralHash, positions, routes, labelPositions });
       })
       .catch(() => {
         /* layout failure: keep previous layout rather than crash the view */
@@ -349,7 +589,7 @@ export function ElkGraph({
    * and resize observations are delivered AFTER requestAnimationFrame callbacks
    * in the same frame, so a single rAF would fit against the old dimensions.
    */
-  const rfRef = useRef<ReactFlowInstance<Node<LabNodeData>, Edge> | null>(null);
+  const rfRef = useRef<ReactFlowInstance<Node<LabNodeData>, Edge<LabEdgeData>> | null>(null);
   useEffect(() => {
     let inner = 0;
     const outer = requestAnimationFrame(() => {
@@ -408,41 +648,68 @@ export function ElkGraph({
     horizontal,
   ]);
 
-  const rfEdges = useMemo<Edge[]>(
+  const rfEdges = useMemo<Edge<LabEdgeData>[]>(
     () =>
       layout && layout.hash === structuralHash
         ? edges.map((e) => {
             const id = elkEdgeId(e);
+            const isCurrent = currentE.has(id);
+            const isVisited = !isCurrent && visited.has(id);
+            const isHidden = hidden.has(id);
+            const label = labels.get(id);
+            const at = layout.labelPositions.get(id);
             return {
               id,
               source: e.source,
               target: e.target,
-              label: e.label,
-              type: 'default',
+              // `type: 'lab'` — the same bezier as `default`, plus a label chip
+              // at ELK's coordinates. No `label` prop: React Flow would draw a
+              // SECOND copy at the curve's midpoint, i.e. back inside a box.
+              type: 'lab' as const,
               className: clsx(
-                currentE.has(id) && 'elk-edge-current',
-                !currentE.has(id) && visited.has(id) && 'elk-edge-visited',
-                hidden.has(id) && 'elk-edge-hidden',
+                isCurrent && 'elk-edge-current',
+                isVisited && 'elk-edge-visited',
+                isHidden && 'elk-edge-hidden',
                 edgeClassName?.(e, id),
               ),
-              // A ghost edge's label recedes with it — `ink-faint` rather than
-              // `ink-muted` — but stays real text at 6.3:1, not a smudge.
-              labelStyle: {
-                fill: hidden.has(id) ? 'var(--ink-faint)' : 'var(--ink-muted)',
-                fontSize: 11,
-                fontFamily: 'var(--font-mono)',
+              data: {
+                label: label?.text,
+                title: label?.title,
+                path: layout.routes.get(id),
+                ...(at ? { labelX: at.x, labelY: at.y } : {}),
+                // The chip is portalled out of the edge's <g>, so no selector on
+                // the edge can reach it: emphasis has to travel in `data`.
+                // A ghost's chip recedes to `ink-faint` (6.3:1) — still text.
+                labelClass: clsx(
+                  isCurrent && 'is-current',
+                  isVisited && 'is-visited',
+                  isHidden && 'is-hidden',
+                ),
               },
-              labelBgStyle: { fill: 'var(--surface)', fillOpacity: 0.85 },
               // Direction is part of what a transition MEANS: `0 -a-> 1` is not
               // the same claim as `1 -a-> 0`, and layout order only implies it.
               // The marker paints with `context-stroke`, so the head inherits
               // whatever colour the edge's state gave it — no per-state markers.
-              ...(directed ? { markerEnd: `url(#${markerId})` } : {}),
+              // The BARE id: React Flow wraps a string markerEnd in `url(#…)`
+              // itself, so passing `url(#id)` here yields the double-wrapped
+              // `url('#url(#id)')` — an invalid reference that paints nothing.
+              ...(directed ? { markerEnd: markerId } : {}),
             };
           })
         : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layout, structuralHash, edges, currentEdgeIds, visitedIds, hiddenIds, edgeClassName, directed, markerId],
+    [
+      layout,
+      structuralHash,
+      edges,
+      labels,
+      currentEdgeIds,
+      visitedIds,
+      hiddenIds,
+      edgeClassName,
+      directed,
+      markerId,
+    ],
   );
 
   return (
@@ -472,6 +739,7 @@ export function ElkGraph({
         nodes={rfNodes}
         edges={rfEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         colorMode={theme}
         onInit={(inst) => {
           rfRef.current = inst;

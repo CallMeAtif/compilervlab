@@ -170,6 +170,18 @@ export function algoMeta(id: AlgoId): AlgoMeta {
   return ALGORITHMS.find((a) => a.id === id) ?? ALGORITHMS[0]!;
 }
 
+/**
+ * The algorithms that refuse a left-recursive grammar, and so are the only
+ * legal values of `?from=` — the algorithm the reader was sent to the transform
+ * view *from*, and the one the transform view sends them back to.
+ */
+export const TOP_DOWN_ALGOS: readonly AlgoId[] = ALGORITHMS.filter((a) => a.topDown).map(
+  (a) => a.id,
+);
+
+/** Where "parse with this grammar" goes when nothing recorded an origin. */
+export const DEFAULT_RETURN_ALGO: AlgoId = 'll1-parse';
+
 // ── Phase-specific sub-selections ────────────────────────────────────────────
 
 export type TransformStage = 'eliminate-left-recursion' | 'left-factor';

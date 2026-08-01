@@ -13,7 +13,14 @@
  */
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
-import { expectPageAlive, stepControls, stepCount, waitForTrace } from './helpers';
+import {
+  expectPageAlive,
+  seekToEnd,
+  stepControls,
+  stepCount,
+  waitForTrace,
+  waitForUrlSettled,
+} from './helpers';
 
 interface AlgoCase {
   /** Tab label (the accessible name of the tab button). */
@@ -181,5 +188,89 @@ test.describe('/syntax on the real C grammar', () => {
       timeout: 60_000,
     });
     expect(await stepCount(page)).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The left-recursion loop must CLOSE.
+ *
+ * Refusing a left-recursive grammar is correct (§4.3.3) and stays. What is not
+ * acceptable is stranding the reader in the transform view with no way to parse
+ * anything: the refusal offers Algorithm 4.19, the transform view plays it, and
+ * at the last step it hands back a grammar the predictive parser accepts. This
+ * walks the whole path and only believes it at `accept`.
+ */
+test.describe('/syntax left recursion → transform → a parse that accepts', () => {
+  test('Grammar 4.1 refuses, Algorithm 4.19 runs, Grammar 4.28 parses to accept', async ({
+    page,
+  }) => {
+    await page.goto('/syntax?grammar=dragon-4.1&algo=ll1-parse');
+    await expectPageAlive(page);
+
+    // 1. The refusal is still there, and says why.
+    await expect(
+      page.getByRole('heading', { name: 'Left recursive. No predictive parse can run on it.' }),
+    ).toBeVisible();
+    await expect(page.getByText(/derive themselves leftmost \(E, T\)/)).toBeVisible();
+    // Nothing to step: the parser never ran.
+    await expect(stepControls(page)).toHaveCount(0);
+
+    // 2. The button's label names its destination — the transform, not a parse.
+    await page.getByRole('button', { name: /^Watch Algorithm 4\.19/ }).click();
+    await expect(page).toHaveURL(/algo=transforms/);
+    await expect(page).toHaveURL(/from=ll1-parse/);
+    await expect(page.getByRole('heading', { name: 'Productions' })).toBeVisible();
+    await waitForTrace(page, 1);
+
+    // 3. Step it to the end; only then is the rewritten grammar offered.
+    await expect(page.getByRole('button', { name: /^Parse with/ })).toHaveCount(0);
+    await seekToEnd(page);
+    await expect(page.getByText('Transform complete')).toBeVisible();
+    await expect(page.getByText('Grammar 4.28 is Grammar 4.1 after Algorithm 4.19.')).toBeVisible();
+
+    // 4. It lands on the algorithm that refused, on a grammar that can run it.
+    await page.getByRole('button', { name: /^Parse with Grammar 4\.28/ }).click();
+    await expect(page).toHaveURL(/grammar=dragon-4\.28/);
+    await expect(page).toHaveURL(/algo=ll1-parse/);
+    // The grammar change is visible, not silent.
+    await expect(page.getByRole('combobox', { name: 'Grammar' })).toContainText('Grammar 4.28');
+    await expect(page.getByRole('heading', { name: /Left recursive/ })).toHaveCount(0);
+
+    // 5. The sentence the refusal could not parse now reaches accept.
+    await page.getByRole('textbox', { name: /Sentence to parse/ }).fill('id * id + id');
+    await page.getByRole('button', { name: 'Parse this sentence' }).click();
+    await waitForTrace(page, 1);
+    await seekToEnd(page);
+    await expect(page.getByRole('heading', { name: /Moves \(Fig 4\.21\)/ })).toBeVisible();
+    await expect(
+      page.locator('section[aria-label="Moves (Fig 4.21)"]').getByText(/accepted/),
+    ).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Accepted' })).toBeVisible();
+    expect(await stepCount(page)).toBe(17);
+
+    // 6. The URL that produced it reproduces it.
+    await waitForUrlSettled(page);
+    const url = page.url();
+    await page.goto(url);
+    await expect(page.getByRole('combobox', { name: 'Grammar' })).toContainText('Grammar 4.28');
+    await expect(page.getByRole('status').filter({ hasText: 'Accepted' })).toBeVisible();
+  });
+
+  test('the recursive-descent refusal returns to recursive descent', async ({ page }) => {
+    await page.goto('/syntax?grammar=dragon-4.1&algo=rd');
+    await expect(
+      page.getByRole('heading', { name: /Left recursive\. No recursive-descent parser/ }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: /^Watch Algorithm 4\.19/ }).click();
+    await expect(page).toHaveURL(/from=rd/);
+    await waitForTrace(page, 1);
+    await seekToEnd(page);
+
+    await page.getByRole('button', { name: /^Parse with Grammar 4\.28/ }).click();
+    await expect(page).toHaveURL(/algo=rd/);
+    await expect(page).toHaveURL(/grammar=dragon-4\.28/);
+    await expect(page.getByRole('heading', { name: 'Call tree' })).toBeVisible();
+    expect(await waitForTrace(page, 1)).toBeGreaterThan(0);
   });
 });

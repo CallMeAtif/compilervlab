@@ -24,6 +24,8 @@ import { useLexTrace } from '../useLexTrace';
 import type { LexTokenClass } from '../tokenClasses';
 import type { TokenClassId } from '../lexUrl';
 import { dfaEdgeId, dfaGraph, isHeavyGraph, showSymbol } from '../graph';
+import { useLexemeRun, type DfaShape } from '../lexemeRun';
+import { LexemeRun } from './LexemeRun';
 import {
   HeavyGate,
   LabButton,
@@ -185,9 +187,20 @@ function EclosurePanel({ state, currentStep }: { state: SubsetState; currentStep
   );
 }
 
-function SubsetBody({ stepper }: { stepper: Stepper<SubsetState, SubsetEvent> }) {
+function SubsetBody({
+  stepper,
+  cls,
+}: {
+  stepper: Stepper<SubsetState, SubsetEvent>;
+  cls: LexTokenClass;
+}) {
   const { trace, state, currentStep } = stepper;
   const final = useMemo(() => trace.final(), [trace]);
+
+  const acceptIds = useMemo(
+    () => new Set(final.states.filter((s) => s.accept !== null).map((s) => s.id)),
+    [final],
+  );
 
   const graph = useMemo(
     () =>
@@ -222,11 +235,25 @@ function SubsetBody({ stepper }: { stepper: Stepper<SubsetState, SubsetEvent> })
     return out;
   }, [currentStep]);
 
+  // The lexeme is walked over the DFA this panel draws, so every state it
+  // visits and every transition it takes has something to highlight.
+  const walkable = useMemo<DfaShape>(
+    () => ({
+      start: final.start,
+      trans: final.trans,
+      isAccepting: (id) => acceptIds.has(id),
+    }),
+    [final, acceptIds],
+  );
+  const run = useLexemeRun(cls, walkable);
+  const walk = run.walk;
+
   // D-states / Dtran entries the construction has not reached yet: laid out
-  // with everything else, dimmed until the trace builds them.
+  // with everything else, dimmed until the trace builds them. A walked path is
+  // never ghosted — the reader asked for it.
   const hidden = useMemo(
-    () => elkHiddenIds(graph.nodes, graph.edges, revealed, current),
-    [graph, revealed, current],
+    () => elkHiddenIds(graph.nodes, graph.edges, revealed, current, walk?.nodeIds, walk?.edgeIds),
+    [graph, revealed, current, walk],
   );
 
   const unmarked = state.states.length - state.marked.length;
@@ -285,8 +312,9 @@ function SubsetBody({ stepper }: { stepper: Stepper<SubsetState, SubsetEvent> })
             nodes={graph.nodes}
             edges={graph.edges}
             visitedIds={revealed}
-            currentNodeIds={current}
-            currentEdgeIds={current}
+            // A picked lexeme takes the accent: its path is the current thing.
+            currentNodeIds={walk ? walk.nodeIds : current}
+            currentEdgeIds={walk ? walk.edgeIds : current}
             hiddenIds={hidden}
             direction="RIGHT"
             height="24rem"
@@ -295,6 +323,7 @@ function SubsetBody({ stepper }: { stepper: Stepper<SubsetState, SubsetEvent> })
             className="lex-graph"
           />
         </HeavyGate>
+        <LexemeRun cls={cls} model={run} isAccepting={(id) => acceptIds.has(id)} />
       </Panel>
     </>
   );
@@ -372,7 +401,7 @@ export function SubsetView({
         { label: 'done', predicate: (s) => s.event.kind === 'complete' },
       ]}
     >
-      {(stepper) => <SubsetBody stepper={stepper} />}
+      {(stepper) => <SubsetBody stepper={stepper} cls={cls} />}
     </TraceSplit>
   );
 }

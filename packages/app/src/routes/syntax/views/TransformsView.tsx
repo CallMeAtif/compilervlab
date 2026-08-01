@@ -19,11 +19,27 @@ import { useStepper } from '../../../lib/useStepper';
 import { DiffView, type DiffRow } from '../../../components/DiffView';
 import { useTrace } from '../lib/useTrace';
 import type { ViewContext } from '../lib/view';
-import { TRANSFORM_STAGES, type TransformStage } from '../lib/algorithms';
-import { symbols } from '../lib/grammars';
+import {
+  DEFAULT_RETURN_ALGO,
+  TRANSFORM_STAGES,
+  algoMeta,
+  type AlgoId,
+  type TransformStage,
+} from '../lib/algorithms';
+import { grammarMeta, llReadyGrammar, llReadyReason, symbols } from '../lib/grammars';
 import { GrammarRail, productionRefs } from '../components/GrammarRail';
 import { ViewGrid } from '../components/Layout';
-import { Diagnostics, Legend, Note, Panel, Segmented, Skeleton, StepPanel, Stat } from '../components/ui';
+import {
+  Diagnostics,
+  Legend,
+  Note,
+  Panel,
+  Segmented,
+  Skeleton,
+  StepPanel,
+  Stat,
+  TextButton,
+} from '../components/ui';
 
 const ruleText = (p: GProd): string => `${p.lhs} → ${symbols(p.rhs)}`;
 
@@ -31,17 +47,20 @@ export function TransformsView({
   ctx,
   stage,
   onStage,
+  from,
 }: {
   ctx: ViewContext;
   stage: TransformStage;
   onStage: (s: TransformStage) => void;
+  /** The top-down algorithm that sent the reader here (?from=), if any. */
+  from: AlgoId | null;
 }) {
   const { trace, phase, diagnostics } = useTrace<TransformState, TransformEvent>(
     'syntax.transforms',
     { grammarId: ctx.grammarId, stage },
     transformReducer,
   );
-  if (trace) return <Ready ctx={ctx} trace={trace} stage={stage} onStage={onStage} />;
+  if (trace) return <Ready ctx={ctx} trace={trace} stage={stage} onStage={onStage} from={from} />;
   if (phase === 'unavailable') {
     return <Diagnostics title="This transform could not be run" diagnostics={diagnostics} />;
   }
@@ -53,11 +72,13 @@ function Ready({
   trace,
   stage,
   onStage,
+  from,
 }: {
   ctx: ViewContext;
   trace: Trace<TransformState, TransformEvent>;
   stage: TransformStage;
   onStage: (s: TransformStage) => void;
+  from: AlgoId | null;
 }) {
   const stepper = useStepper(trace, ctx.stepperOptions);
   const before = trace.initial;
@@ -145,6 +166,7 @@ function Ready({
                 { label: 'untouched', swatch: <span aria-hidden className="font-mono text-ink-faint">·</span> },
               ]}
             />
+            {stepper.atEnd && <Handoff ctx={ctx} from={from} />}
           </Panel>
         </>
       }
@@ -205,6 +227,46 @@ function Ready({
         </StepPanel>
       }
     />
+  );
+}
+
+/**
+ * The end of the loop.
+ *
+ * Watching Algorithm 4.19 run is only half the lesson; the other half is
+ * parsing with what came out. At the last step this hands the reader back to
+ * the algorithm that refused them (?from=, else the LL(1) parse) on a grammar
+ * that CAN be parsed top-down — and names that grammar, both in the button and
+ * in one line saying why, because switching someone's grammar silently is the
+ * bug this closes, not the fix.
+ *
+ * The grammar handed over is the bundled equivalent of this transform's own
+ * output: Grammar 4.28 IS Grammar 4.1 after Algorithm 4.19, and `c-subset-ll`
+ * IS llReadyCGrammar(). See lib/grammars.ts.
+ */
+function Handoff({ ctx, from }: { ctx: ViewContext; from: AlgoId | null }) {
+  const target = llReadyGrammar(ctx.grammarId);
+  const reason = target === ctx.grammarId ? null : llReadyReason(ctx.grammarId);
+  const algo = from ?? DEFAULT_RETURN_ALGO;
+  const label =
+    target === ctx.grammarId ? 'Parse with this grammar' : `Parse with ${grammarMeta(target).short}`;
+
+  return (
+    <Note
+      tone="info"
+      title="Transform complete"
+      actions={
+        <TextButton
+          emphasis
+          ariaLabel={`${label} — runs ${algoMeta(algo).label}`}
+          onClick={() => ctx.selectAlgo(algo, { grammar: target, from: null })}
+        >
+          {label}
+        </TextButton>
+      }
+    >
+      {reason}
+    </Note>
   );
 }
 
