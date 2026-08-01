@@ -69,6 +69,8 @@ import {
   useReplay,
   type ReplaySpec,
 } from '../lib/useOptTrace';
+import { CitationBadge } from '../../../components/CitationBadge';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { CfgGraph, type CfgGraphEdgeView } from '../components/CfgGraph';
 import { DataflowTable } from '../components/DataflowTable';
 import { Chip, Notice, Panel } from '../components/OptStates';
@@ -93,11 +95,12 @@ const LOOPS_SPEC: ReplaySpec<LoopsState, LoopsEvent> = {
 };
 const DOM_INIT_KINDS: ReadonlySet<string> = new Set(['dom-init']);
 
+/** The three §9.1.5 code-motion conditions, as labels for each checked item. */
 const LEGALITY_LABEL: Record<string, string> = {
-  'dominates-exits-or-dead': '1 · the statement dominates every loop exit, or its target is dead after the loop',
-  'only-def-in-loop': '2 · x has no other definition inside the loop',
-  'only-def-reaching-uses': '3 · every use of x in the loop is reached only by this definition',
-  'depends-on-moved-invariants': 'dep · the in-loop definitions its operands rely on have already moved',
+  'dominates-exits-or-dead': '1 · dominates every loop exit, or target dead after the loop',
+  'only-def-in-loop': '2 · sole definition of x in the loop',
+  'only-def-reaching-uses': '3 · reaches every use of x in the loop',
+  'depends-on-moved-invariants': 'dep · operands’ in-loop definitions already moved',
 };
 
 export interface PassViewProps {
@@ -152,14 +155,20 @@ export function PassView({ pass, source, optimized, stepperOptions, onSelectPass
     '';
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-      <Panel
-        title={meta.label}
-        cite={meta.citation}
-        subtitle={meta.analysisLabel ? `Analysis: ${meta.analysisLabel}` : 'No data-flow analysis needed'}
-        bodyClassName="flex flex-col gap-3"
-      >
-        <p className="max-w-3xl text-sm text-ink-muted">{meta.blurb}</p>
+    <div className="flex min-w-0 flex-col">
+      {/* ONE band above the artifact: the pass name and its analysis on the
+          title line, the pipeline rail under it, the function picker beside. */}
+      <section className="section">
+        <header className="section-head">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <h2 className="section-title">{meta.label}</h2>
+            <CitationBadge cite={meta.citation} />
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span className="section-meta">{meta.analysisLabel ?? 'no analysis'}</span>
+            <FunctionPicker functions={functionNames} selected={selectedFn} onSelect={setSelected} label="fn" />
+          </div>
+        </header>
         <PassRail
           selected={pass}
           onSelect={onSelectPass}
@@ -167,29 +176,30 @@ export function PassView({ pass, source, optimized, stepperOptions, onSelectPass
           inputQuads={quadCount(optimized.input)}
           outputQuads={quadCount(optimized.output)}
         />
-        <FunctionPicker functions={functionNames} selected={selectedFn} onSelect={setSelected} />
-      </Panel>
+      </section>
 
-      <TraceGate
-        load={load}
-        what={`the ${meta.label.toLowerCase()} pass`}
-        unavailableExplanation="Pass traces run on the optimizer's input program, so they need a program that compiled through intermediate-code generation."
-      >
-        {(trace) => (
-          <SplitTraceView trace={trace} title={`Pass: ${pass}`} stepperOptions={stepperOptions}>
-            {(stepper) => (
-              <PassViz
-                pass={pass}
-                stepper={stepper}
-                trace={trace}
-                selectedFn={selectedFn}
-                entering={entering}
-                enteringCfgs={enteringCfgs}
-              />
-            )}
-          </SplitTraceView>
-        )}
-      </TraceGate>
+      <div className="mt-8 min-w-0">
+        <TraceGate
+          load={load}
+          what={`the ${meta.label.toLowerCase()} pass`}
+          unavailableExplanation="Pass traces need a program that reached intermediate-code generation."
+        >
+          {(trace) => (
+            <SplitTraceView trace={trace} stepperOptions={stepperOptions}>
+              {(stepper) => (
+                <PassViz
+                  pass={pass}
+                  stepper={stepper}
+                  trace={trace}
+                  selectedFn={selectedFn}
+                  entering={entering}
+                  enteringCfgs={enteringCfgs}
+                />
+              )}
+            </SplitTraceView>
+          )}
+        </TraceGate>
+      </div>
     </div>
   );
 }
@@ -349,23 +359,22 @@ function PassViz({ pass, stepper, trace, selectedFn, entering, enteringCfgs }: P
   const markedQuads = useMemo(() => new Set(licm.invariants.keys()), [licm]);
 
   if (!fn || !cfg) {
-    return (
-      <Notice tone="warn">
-        This pass produced no flow graph for the selected function — pick another function.
-      </Notice>
-    );
+    return <Notice tone="warn">No flow graph for this function.</Notice>;
   }
 
   return (
     <>
       <Panel
-        title={`Flow graph entering ${meta.short} · ${fn.name}()`}
-        subtitle={`${cfg.blocks.length} blocks · ${cfg.edges.length} edges${
-          structure && structure.backEdges.size > 0
-            ? ` · ${structure.backEdges.size} back edge(s)`
-            : ''
-        }`}
-        bodyClassName="p-0"
+        title="Flow graph"
+        actions={
+          <span className="section-meta">
+            {fn.name}() · {cfg.blocks.length} blocks · {cfg.edges.length} edges
+            {structure && structure.backEdges.size > 0
+              ? ` · ${structure.backEdges.size} back`
+              : ''}
+          </span>
+        }
+        /* No `frame`: ElkGraph already draws the artifact's own `.framed` box. */
       >
         <CfgGraph
           blocks={blocks}
@@ -374,6 +383,7 @@ function PassViz({ pass, stepper, trace, selectedFn, entering, enteringCfgs }: P
           badges={badges}
           markedQuads={markedQuads}
           graphHeight="24rem"
+          controls={<FullscreenTransport stepper={stepper} />}
           ariaLabel={`Flow graph of ${fn.name} entering the ${pass} pass`}
         />
       </Panel>
@@ -393,21 +403,30 @@ function PassViz({ pass, stepper, trace, selectedFn, entering, enteringCfgs }: P
 
       {meta.analysis !== null && dataflow.name !== '' && (
         <Panel
-          title={`Analysis while the pass runs: ${dataflow.name}`}
+          title={dataflow.name}
           cite={{ section: dataflow.name === 'live-variables' ? '9.2.5' : '9.2' }}
-          subtitle="These events ride inside the pass trace — the pass rewrites only what this analysis proves."
-          bodyClassName="flex flex-col gap-3"
+          actions={
+            <span className="section-meta flex items-center gap-1.5">
+              {dataflow.converged ? (
+                <>
+                  <Check aria-hidden className="size-3 text-ok" />
+                  converged · {dataflow.iterations} iteration
+                  {dataflow.iterations === 1 ? '' : 's'}
+                </>
+              ) : (
+                <>
+                  <Repeat aria-hidden className="size-3" />
+                  iteration {Math.max(dataflow.iterations, 1)}
+                </>
+              )}
+            </span>
+          }
+          bodyClassName="flex flex-col gap-4"
+          fullscreen={{
+            label: `the ${dataflow.name} table`,
+            controls: <FullscreenTransport stepper={stepper} />,
+          }}
         >
-          {dataflow.converged ? (
-            <Notice tone="ok" icon={<Check aria-hidden className="size-4 shrink-0" />}>
-              {dataflow.name} converged after {dataflow.iterations} iteration
-              {dataflow.iterations === 1 ? '' : 's'} — the pass now rewrites against this fixedpoint.
-            </Notice>
-          ) : (
-            <Notice tone="info" icon={<Repeat aria-hidden className="size-4 shrink-0" />}>
-              Iteration {Math.max(dataflow.iterations, 1)} in progress.
-            </Notice>
-          )}
           <DataflowTable
             state={dataflow}
             blockIds={dfBlockIds}
@@ -419,40 +438,40 @@ function PassViz({ pass, stepper, trace, selectedFn, entering, enteringCfgs }: P
 
       <Panel
         title={`Rewrites in ${fn.name}()`}
-        subtitle={`${state.changes.filter((c) => c.functionName === fn.name).length} change(s) applied so far${
-          state.done ? ' · pass finished' : ''
-        }`}
         actions={
           <div className="flex items-center gap-1.5">
+            <span className="section-meta">
+              {state.changes.filter((c) => c.functionName === fn.name).length} applied
+              {state.done ? ' · done' : ''}
+            </span>
             <Chip tone={diff.changed > 0 ? 'warn' : 'neutral'}>~ {diff.changed}</Chip>
             <Chip tone={diff.added > 0 ? 'ok' : 'neutral'}>+ {diff.added}</Chip>
             <Chip tone={diff.removed > 0 ? 'err' : 'neutral'}>− {diff.removed}</Chip>
           </div>
         }
-        bodyClassName="p-0"
       >
         <DiffView
           rows={diff.rows}
           beforeLabel={`Before ${meta.short}`}
           afterLabel={state.done ? `After ${meta.short}` : 'At this step'}
-          className="rounded-none border-0"
+          className="diff-editorial"
         />
       </Panel>
 
       {skipped.length > 0 && (
         <Panel
-          title="Rewrites the pass declined"
-          subtitle="Legality first: a transformation that could change the program's meaning is not applied."
-          bodyClassName="flex flex-col gap-2"
+          title="Declined rewrites"
+          actions={<span className="section-meta">{skipped.length}</span>}
+          bodyClassName="flex flex-col gap-1.5"
         >
           {skipped.map((s, i) => (
-            <div key={`${s.quadIndex}-${i}`} className="flex gap-2 text-xs">
-              <CircleSlash aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warn" />
-              <span className="font-mono text-ink-muted">
-                instruction {s.quadIndex}
+            <p key={`${s.quadIndex}-${i}`} className="flex gap-2 text-sm text-ink-muted">
+              <CircleSlash aria-hidden className="mt-1 size-3.5 shrink-0 text-warn" />
+              <span className="min-w-0">
+                <span className="font-mono text-xs text-ink">instruction {s.quadIndex}</span>{' '}
+                {s.reason}
               </span>
-              <span className="text-ink-muted">{s.reason}</span>
-            </div>
+            </p>
           ))}
         </Panel>
       )}
@@ -484,19 +503,19 @@ function LicmPanel({
   const entries = [...invariants.entries()].sort((a, b) => a[0] - b[0]);
   return (
     <Panel
-      title="Loop-invariant code motion"
+      title="Invariants"
       cite={{
         section: '9.1.5',
         rule: 'A statement is loop-invariant if each operand is constant, defined only outside the loop, or defined by a single loop-invariant statement of the loop',
       }}
-      subtitle={
-        loops.loops.length === 0
-          ? 'Finding the natural loops first (dominators → back edges → loop bodies).'
-          : `${loops.loops.length} natural loop(s) · ${entries.length} invariant statement(s) marked`
+      actions={
+        <span className="section-meta">
+          {loops.loops.length} loops · {entries.length} marked
+        </span>
       }
-      bodyClassName="flex flex-col gap-3"
+      bodyClassName="flex flex-col gap-5"
     >
-      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      <div className="flex flex-wrap items-center gap-1.5">
         <Chip tone={dominators.converged ? 'ok' : 'neutral'}>
           dominators {dominators.converged ? `converged (${dominators.iterations})` : 'computing…'}
         </Chip>
@@ -509,11 +528,9 @@ function LicmPanel({
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          No statement has been marked loop-invariant yet.
-        </p>
+        <p className="prose-note">Nothing marked yet.</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col">
           {entries.map(([quadIndex, info]) => {
             const quad = fn.quads[quadIndex];
             const conditions = legality.get(quadIndex) ?? [];
@@ -523,35 +540,40 @@ function LicmPanel({
               <li
                 key={quadIndex}
                 className={clsx(
-                  'rounded-md border px-3 py-2',
-                  isFocus ? 'border-accent bg-accent-soft' : 'border-line',
+                  'border-t border-line py-3 pl-3 first:border-t-0',
+                  isFocus
+                    ? 'bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]'
+                    : 'shadow-[inset_3px_0_0_var(--line)]',
                 )}
               >
-                <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-                  <CornerDownRight aria-hidden className="size-3.5 text-ink-faint" />
-                  <span className="text-ink-faint">{quadIndex}</span>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono type-code">
+                  <CornerDownRight
+                    aria-hidden
+                    className="size-3.5 shrink-0 translate-y-0.5 text-ink-faint"
+                  />
+                  <span className="text-2xs text-ink-faint tabular-nums">{quadIndex}</span>
                   <span className="font-semibold text-ink">
                     {quad ? formatQuad(quad) : '‹removed›'}
                   </span>
                   <Chip tone="neutral">loop B{info.loopHeader}</Chip>
                   {conditions.length > 0 && (
                     <Chip tone={allOk ? 'ok' : 'err'}>
-                      {allOk ? 'legal to move' : 'blocked'}
+                      {allOk ? '✓ legal to move' : '■ blocked'}
                     </Chip>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-ink-muted">Invariant because {info.reason}.</p>
+                <p className="prose-note mt-1 text-sm">Invariant because {info.reason}.</p>
                 {conditions.length > 0 && (
-                  <ul className="mt-1.5 flex flex-col gap-1">
+                  <ul className="mt-2 flex flex-col gap-1">
                     {conditions.map((c) => (
-                      <li key={c.condition} className="flex items-start gap-1.5 text-xs">
+                      <li key={c.condition} className="flex items-start gap-2 text-sm">
                         {c.ok ? (
-                          <Check aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ok" />
+                          <Check aria-hidden className="mt-1 size-3.5 shrink-0 text-ok" />
                         ) : (
-                          <X aria-hidden className="mt-0.5 size-3.5 shrink-0 text-err" />
+                          <X aria-hidden className="mt-1 size-3.5 shrink-0 text-err" />
                         )}
                         <span className="text-ink-muted">
-                          <span className="font-medium text-ink">
+                          <span className="font-semibold text-ink">
                             {LEGALITY_LABEL[c.condition] ?? c.condition}
                           </span>{' '}
                           — {c.detail}
@@ -567,20 +589,22 @@ function LicmPanel({
       )}
 
       {preheaderJustification && (
-        <div className="rounded-md border border-accent/60 bg-accent-soft/60 px-3 py-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-ink">
-            <MoveDown aria-hidden className="size-3.5" />
-            Preheader created · {movedCount} statement(s) moved into it
-          </div>
-          <p className="mt-1 text-xs text-ink-muted">{preheaderJustification}</p>
-          <div className="mt-2 flex flex-col items-start gap-1 font-mono text-[11px] text-ink-muted">
-            <span className="rounded border border-dashed border-accent px-2 py-0.5">
-              preheader — the moved invariants run once
+        <div className="border-l-2 border-l-accent pl-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <MoveDown aria-hidden className="size-3.5 text-accent" />
+            Preheader · {movedCount} moved
+          </p>
+          {/* Per-item data from the pass itself, not standing explanation. */}
+          <p className="prose-note mt-1 text-sm">{preheaderJustification}</p>
+          <div className="mt-2.5 flex flex-col items-start gap-1 font-mono text-2xs text-ink-muted">
+            <span className="rounded-sm border border-dashed border-accent px-2 py-0.5">
+              preheader
             </span>
-            <span className="pl-4">↓</span>
-            <span className="rounded border border-line-strong px-2 py-0.5">
-              loop header {blockName(loops.loops[0]?.header ?? 0)} — entered from the preheader,
-              re-entered by the back edge
+            <span className="pl-4" aria-hidden>
+              ↓
+            </span>
+            <span className="rounded-sm border border-line-strong px-2 py-0.5">
+              {blockName(loops.loops[0]?.header ?? 0)} header
             </span>
           </div>
         </div>

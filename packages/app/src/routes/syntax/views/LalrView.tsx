@@ -12,6 +12,7 @@ import type { Trace } from '@lab/trace';
 import { formatDotted } from '@lab/core/grammar/lr-events.js';
 import { lalrReducer, type LalrEvent, type LalrUiState } from '@lab/core/grammar/lalr.js';
 import { useStepper } from '../../../lib/useStepper';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useTrace } from '../lib/useTrace';
 import type { ViewContext } from '../lib/view';
 import { terminalColumns } from '../lib/grammars';
@@ -136,9 +137,8 @@ function Ready({
         <>
           <Panel
             title="Merging same-core LR(1) states"
-            subtitle="§4.7.4 · Algorithm 4.59"
             actions={
-              <label className="flex h-11 cursor-pointer items-center gap-2 rounded-md border border-control px-3 text-xs text-ink-muted transition-colors hover:border-line-strong">
+              <label className="flex h-11 cursor-pointer items-center gap-2 rounded-sm px-2 text-2xs text-ink-muted transition-colors hover:bg-raised hover:text-ink">
                 <input
                   type="checkbox"
                   checked={resolveElse}
@@ -146,30 +146,22 @@ function Ready({
                   className="size-4 accent-[var(--accent)]"
                   aria-label="Resolve dangling-else shift/reduce conflicts by shifting"
                 />
-                resolve dangling else by shift (§4.8.2)
+                resolve dangling else (§4.8.2)
               </label>
             }
             bodyClassName="flex flex-col gap-3"
           >
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1">
               <Stat label="LR(1) states" value={final.lr1StateCount || state.lr1StateCount} />
               <Stat label="LALR states" value={final.states.length} />
               <Stat label="merges" value={`${mergesSoFar} / ${merges.length}`} />
             </div>
-            <p className="text-xs leading-relaxed text-ink-muted">
-              Two LR(1) states have the same <em>core</em> when they hold the same items ignoring
-              lookaheads. Algorithm 4.59 replaces every such group by one state whose items carry
-              the union of the lookaheads. The automaton keeps its shape (same-core states have
-              same-core successors), the table shrinks to the size of the LR(0) machine, and the
-              only new risk is a reduce/reduce conflict between two complete items whose lookaheads
-              were kept apart in the canonical collection.
-            </p>
 
             {mergeEvent && (
               <div
                 className={clsx(
-                  'flex flex-col gap-2 rounded-lg border p-3 transition-colors',
-                  mergeEvent.merged ? 'border-accent bg-accent-soft' : 'border-line bg-canvas',
+                  'flex flex-col gap-2 border-l-2 py-1 pl-3 transition-colors',
+                  mergeEvent.merged ? 'border-accent' : 'border-line-strong',
                 )}
               >
                 <p className="font-mono text-sm text-ink">
@@ -181,7 +173,7 @@ function Ready({
                   )}
                 </p>
                 {mergeEvent.merged && (
-                  <div className="max-h-52 overflow-auto rounded border border-line bg-surface">
+                  <div className="framed artifact-scroll max-h-52">
                     <table className="w-full border-collapse font-mono text-[11px]">
                       <thead className="sticky top-0 bg-raised text-ink-muted">
                         <tr>
@@ -225,6 +217,7 @@ function Ready({
               currentStateId={currentStateId}
               visitedStateIds={visited}
               currentEdge={currentEdge}
+              controls={<FullscreenTransport stepper={stepper} />}
             />
           </Panel>
 
@@ -243,6 +236,7 @@ function Ready({
               rowName={nameOf}
               current={currentCell}
               height={380}
+              controls={<FullscreenTransport stepper={stepper} />}
             />
             <CurrentRowStrip
               ag={ag}
@@ -266,17 +260,17 @@ function Ready({
             { label: 'next conflict', pred: (s) => s.event.kind === 'table/conflict' },
           ]}
         >
-          <Panel title="Merged item sets" bodyClassName="flex flex-col gap-2">
+          <Panel title="Merged item sets" bodyClassName="flex flex-col gap-3">
             <ItemSets
               states={itemSets}
               currentStateId={currentStateId}
               added={null}
               justifies={null}
-              emptyLabel="Step forward to start merging the canonical LR(1) states."
+              emptyLabel="Step forward to merge."
             />
           </Panel>
 
-          <Panel title="Conflicts" bodyClassName="flex flex-col gap-2">
+          <Panel title="Conflicts" bodyClassName="flex flex-col gap-3">
             {ctx.grammarId === 'c-subset' && (
               <Note
                 tone={resolveElse ? 'warn' : 'error'}
@@ -288,12 +282,10 @@ function Ready({
               >
                 <span className="font-mono">IfStmt → if ( Expr ) Stmt</span> and{' '}
                 <span className="font-mono">IfStmt → if ( Expr ) Stmt else Stmt</span> collide on{' '}
-                <span className="font-mono">else</span>: the parser can reduce the short form or
-                shift the <span className="font-mono">else</span>. The grammar is genuinely
-                ambiguous here.{' '}
+                <span className="font-mono">else</span>.{' '}
                 {resolveElse
-                  ? 'Resolving in favour of the shift attaches each else to the nearest unmatched if — the rule every C compiler follows (§4.8.2). The conflict is not removed from the grammar, only decided.'
-                  : 'Left undecided, the first-registered action wins and the else could attach to the wrong if. Turn the toggle above on to apply the §4.8.2 resolution the pipeline parser uses.'}
+                  ? 'Shifting binds each else to the nearest unmatched if (§4.8.2).'
+                  : 'Undecided, the first-registered action wins.'}
               </Note>
             )}
             <ConflictList
@@ -301,8 +293,8 @@ function Ready({
               conflicts={state.conflicts}
               emptyLabel={
                 final.conflicts.length === 0
-                  ? 'No cell is ever claimed twice: merging introduced no reduce/reduce conflict, so this grammar is LALR(1).'
-                  : `None yet — ${final.conflicts.length} appear later in the construction.`
+                  ? 'None. The merge is conflict-free.'
+                  : `None yet. ${final.conflicts.length} appear later.`
               }
               onSelect={(c) => {
                 const idx = trace.findIndex(

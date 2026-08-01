@@ -15,10 +15,11 @@ import { scanReducer, type ScanEvent, type ScanState } from '@lab/core/lex/reduc
 import type { DtranEntry } from '@lab/core/lex/types.js';
 import { CodeStrip } from '../../../components/viz/CodeStrip';
 import { ElkGraph, elkHiddenIds } from '../../../components/viz/ElkGraph';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import type { Stepper } from '../../../lib/useStepper';
 import { useLexTrace } from '../useLexTrace';
 import { dfaEdgeId, dfaGraph } from '../graph';
-import { LoadingPanel, Note, Panel, TraceSplit, UnavailablePanel } from './ui';
+import { LoadingPanel, Note, Panel, Reveal, TraceSplit, UnavailablePanel } from './ui';
 import { AutomatonLegend, InputTape, StatChips, TokenChip } from './bits';
 import { spanAt } from '../source';
 
@@ -148,24 +149,31 @@ function ScanBody({ source, stepper }: { source: string; stepper: Stepper<ScanSt
     <>
       <Panel
         title="Source under the scanner"
-        subtitle={`character ${state.pos} of ${source.length}`}
+        subtitle={`char ${state.pos} / ${source.length}`}
         actions={
-          <StatChips
-            items={[
-              ['tokens', String(state.tokens.length)],
-              ['identifiers', String(state.symbols.length)],
-              ['errors', String(state.errors.length)],
-            ]}
-          />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <StatChips
+              items={[
+                ['tokens', String(state.tokens.length)],
+                ['identifiers', String(state.symbols.length)],
+                ['errors', String(state.errors.length)],
+              ]}
+            />
+            <Reveal label="pointers">
+              <p className="prose-note text-sm">
+                §3.2: <span className="font-mono">lexemeBegin</span> holds the token start,{' '}
+                <span className="font-mono">forward</span> runs ahead and retracts to{' '}
+                <span className="font-mono">lastAccept</span> when the DFA dies.
+              </p>
+            </Reveal>
+          </div>
         }
-        bodyClassName="p-0"
       >
         <CodeStrip
           source={source}
           spans={spans}
           carets={carets}
           maxHeight="14rem"
-          className="rounded-none border-0"
         />
         <div className="border-t border-line p-3">
           <InputTape
@@ -175,41 +183,21 @@ function ScanBody({ source, stepper }: { source: string; stepper: Stepper<ScanSt
             lastAccept={cursor?.lastAccept?.pos ?? null}
             retracted={rollback}
           />
-          <p className="mt-2 text-xs text-ink-muted">
-            The two pointers of §3.2: <span className="font-mono">lexemeBegin</span> stays at the
-            start of the token, <span className="font-mono">forward</span> runs ahead through the
-            DFA. When the DFA dies, forward retracts to{' '}
-            <span className="font-mono">lastAccept</span>.
-          </p>
         </div>
       </Panel>
 
-      <Panel
-        title="Scanner state"
-        subtitle="Fig 3.54 — simulate, remember the last accepting state, retract on failure"
-      >
+      <Panel title="Scanner state" subtitle="Fig 3.54">
         {rollback && (
-          <div className="mb-3 flex items-start gap-2 rounded-md border border-warn/60 bg-warn-soft px-3 py-2 text-sm text-warn">
+          <p className="mb-4 flex items-start gap-2 border-l-2 border-warn py-1 pl-3 text-sm text-warn">
             <Undo2 aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <p>
+            <span>
               <span className="font-semibold">Retraction.</span>{' '}
-              {rollback.reason === 'endOfInput' ? (
-                <>
-                  The input ran out at position <span className="font-mono">{rollback.from}</span>{' '}
-                  in a non-accepting state,
-                </>
-              ) : (
-                <>
-                  The DFA had no move at position <span className="font-mono">{rollback.from}</span>
-                  ,
-                </>
-              )}{' '}
-              so forward is pushed back to <span className="font-mono">{rollback.to}</span> — the
-              last position where an accepting state was seen, and the machine is back in state{' '}
-              <span className="font-mono">{rollback.toState}</span>. The struck-through characters
-              above are re-scanned as part of the next token. That is the longest-match rule.
-            </p>
-          </div>
+              {rollback.reason === 'endOfInput' ? 'Input ran out' : 'No move'} at{' '}
+              <span className="font-mono">{rollback.from}</span>; forward returns to{' '}
+              <span className="font-mono">{rollback.to}</span>, state{' '}
+              <span className="font-mono">{rollback.toState}</span>.
+            </span>
+          </p>
         )}
         <dl className="grid grid-cols-[10rem_1fr] gap-x-3 gap-y-1.5 font-mono text-xs">
           <dt className="text-ink-muted">DFA state</dt>
@@ -242,16 +230,19 @@ function ScanBody({ source, stepper }: { source: string; stepper: Stepper<ScanSt
           <dd className={cursor?.lastAccept ? 'text-ink' : 'text-ink-faint'}>
             {cursor?.lastAccept
               ? `${cursor.lastAccept.token} @ ${cursor.lastAccept.pos}`
-              : 'none yet — the DFA has not passed an accepting state'}
+              : 'none yet'}
           </dd>
         </dl>
       </Panel>
 
       <Panel
-        title="The combined DFA, live"
-        subtitle={`${dfa.states.length} states exercised by this program`}
-        actions={<AutomatonLegend kind="dfa" />}
-        bodyClassName="p-0"
+        title="Combined DFA"
+        subtitle={`${dfa.states.length} states exercised`}
+        actions={
+          <Reveal label="key">
+            <AutomatonLegend kind="dfa" />
+          </Reveal>
+        }
       >
         <ElkGraph
           nodes={graph.nodes}
@@ -262,23 +253,17 @@ function ScanBody({ source, stepper }: { source: string; stepper: Stepper<ScanSt
           hiddenIds={hidden}
           direction="RIGHT"
           height="22rem"
-          className="lex-graph rounded-none border-0"
+          controls={<FullscreenTransport stepper={stepper} />}
+          className="lex-graph"
         />
-        <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">
-          Drawn from the transitions this program actually takes through the scanner's minimized
-          DFA — states it never reaches are not shown. Edge labels condense the characters that
-          share a transition.
-        </p>
       </Panel>
 
       <Panel
         title="Token stream"
-        subtitle={lastEmitted ? `last: ${lastEmitted.type} "${lastEmitted.lexeme}"` : 'nothing emitted yet'}
+        subtitle={lastEmitted ? `last: ${lastEmitted.type} "${lastEmitted.lexeme}"` : 'none yet'}
       >
         {state.tokens.length === 0 ? (
-          <p className="text-sm text-ink-muted">
-            No tokens yet — each one appears the moment Fig 3.54 emits it.
-          </p>
+          <p className="prose-note text-sm">No tokens yet.</p>
         ) : (
           <div className="flex max-h-56 flex-wrap gap-1.5 overflow-y-auto">
             {state.tokens.map((t) => (
@@ -325,10 +310,7 @@ export function ScanTab({
   }
   if (traceState.status === 'unavailable') {
     return (
-      <UnavailablePanel title="No scan trace" diagnostics={traceState.diagnostics}>
-        A lexical error is a step in this trace rather than a reason to withhold it, so this is
-        unexpected — the diagnostics above are what the worker reported.
-      </UnavailablePanel>
+      <UnavailablePanel title="No scan trace" diagnostics={traceState.diagnostics} />
     );
   }
 
@@ -336,7 +318,6 @@ export function ScanTab({
     <TraceSplit
       key={`scan:${compilationId}`}
       trace={traceState.trace}
-      title="Scanner driver"
       initialStep={initialStep}
       jumpTargets={[
         { label: 'token', predicate: (s) => s.event.kind === 'tokenEmitted' },

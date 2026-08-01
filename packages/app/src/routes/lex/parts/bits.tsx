@@ -7,16 +7,14 @@ import { clsx } from 'clsx';
 import type { ReactNode } from 'react';
 import type { Token } from '@lab/core/csubset/tokens.js';
 
+/** A mono metadata line beside a section title — no pills, no fills. */
 export function StatChips({ items }: { items: ReadonlyArray<readonly [string, string]> }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 font-mono text-2xs">
       {items.map(([k, v]) => (
-        <span
-          key={k}
-          className="inline-flex h-6 items-center gap-1.5 rounded-full border border-line bg-raised px-2 text-[11px] text-ink-muted"
-        >
-          {k}
-          <span className="font-mono text-ink">{v}</span>
+        <span key={k} className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
+          <span className="text-ink-faint">{k}</span>
+          <span className="tabular-nums text-ink">{v}</span>
         </span>
       ))}
     </div>
@@ -26,7 +24,7 @@ export function StatChips({ items }: { items: ReadonlyArray<readonly [string, st
 /** Shape key for the automaton graphs — never colour alone. */
 export function AutomatonLegend({ kind }: { kind: 'nfa' | 'dfa' }) {
   return (
-    <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-muted">
+    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-2xs text-ink-faint">
       <li className="flex items-center gap-1.5">
         <span
           aria-hidden
@@ -63,7 +61,7 @@ export function GroupSwatch({ group, className }: { group: number; className?: s
 
 export function GroupBadge({ group, children }: { group: number; children?: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-line bg-raised px-1.5 font-mono text-[10px] text-ink-muted">
+    <span className="inline-flex items-center gap-1 font-mono text-3xs text-ink-muted">
       <GroupSwatch group={group} />
       G{group}
       {children}
@@ -103,10 +101,10 @@ export function TokenChip({
       aria-label={`Token ${token.index}: ${token.type} ${token.lexeme}`}
       aria-current={active ? 'true' : undefined}
       className={clsx(
-        'flex h-11 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 font-mono text-xs transition-colors',
+        'flex h-11 cursor-pointer items-center gap-1.5 rounded-sm px-2 font-mono text-xs transition-colors',
         active
-          ? 'border-accent bg-accent-soft text-ink shadow-[inset_0_0_0_1px_var(--accent)]'
-          : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
+          ? 'bg-accent-soft text-ink shadow-[inset_0_-2px_0_var(--accent)]'
+          : 'text-ink-muted hover:bg-raised hover:text-ink',
       )}
     >
       <span aria-hidden className="text-[10px] text-ink-faint">
@@ -189,7 +187,7 @@ export function InputTape({
   };
 
   return (
-    <div className="overflow-x-auto rounded-md border border-line bg-code px-2 py-1">
+    <div className="framed artifact-scroll bg-code px-2 py-1">
       <div className="relative min-w-max pt-4 pb-4 font-mono text-sm leading-6">
         <div className="relative h-4">
           {marker(pos, '▼', 'forward')}

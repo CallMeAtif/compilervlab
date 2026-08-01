@@ -15,11 +15,13 @@ import type { Trace } from '@lab/trace';
 import { clsx } from 'clsx';
 import { CornerDownLeft, CornerUpRight, Save } from 'lucide-react';
 import { CodeStrip } from '../../../components/viz/CodeStrip';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useCodegenTrace } from '../useCodegenTrace';
 import { prefixLatest } from '../traceScan';
 import { lineNotes, quadFor, spanFor, type LineRole } from '../provenance';
 import {
   AutoMicroSteps,
+  Disclosure,
   Legend,
   Panel,
   Tag,
@@ -93,132 +95,142 @@ function AssemblyView({
         return (
           <>
             <AutoMicroSteps stepper={stepper} />
-            <Legend
-              items={[
-                { swatch: <Tag tone="accent">prologue</Tag>, label: 'sets up the frame (§7.2)' },
-                { swatch: <Tag tone="accent">epilogue</Tag>, label: 'tears it down and returns' },
-                {
-                  swatch: (
-                    <Tag tone="warn">
-                      <Save aria-hidden className="size-2.5" />
-                      spill
-                    </Tag>
-                  ),
-                  label: 'load/store for a spilled value',
-                },
-                {
-                  swatch: <span aria-hidden className="font-mono text-[11px] text-ink-faint">t4</span>,
-                  label: 'quad that selected the line',
-                },
-              ]}
-            />
+            {/* The tags in the listing name themselves, so the key is one
+                interaction away rather than a permanent line above it. */}
+            <Disclosure summary="Key">
+              <Legend
+                items={[
+                  { swatch: <Tag tone="accent">prologue</Tag>, label: 'frame setup (§7.2)' },
+                  { swatch: <Tag tone="accent">epilogue</Tag>, label: 'teardown' },
+                  {
+                    swatch: (
+                      <Tag tone="warn">
+                        <Save aria-hidden className="size-2.5" />
+                        spill
+                      </Tag>
+                    ),
+                    label: 'spill traffic',
+                  },
+                  {
+                    swatch: (
+                      <span aria-hidden className="font-mono text-2xs text-ink-faint">
+                        q4
+                      </span>
+                    ),
+                    label: 'source quad',
+                  },
+                ]}
+              />
+            </Disclosure>
 
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            <div className="cg-row mt-6 grid gap-8 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
               <Panel
                 title="Emitted assembly"
-                subtitle={`${lines.length} line(s) — hover or focus a line for its provenance`}
-                bodyClassName="p-0"
+                actions={<span className="section-meta">{lines.length} lines · AT&T</span>}
+                frame
+                /* A code figure: its own paper, its own frame, its own measure. */
+                bodyClassName="max-h-[36rem] bg-code"
+                fullscreen={{
+                  label: 'the assembly listing',
+                  controls: <FullscreenTransport stepper={stepper} />,
+                  bodyClassName: 'bg-code',
+                }}
               >
-                <div className="max-h-[36rem] overflow-auto">
-                  <ul className="font-mono text-xs">
-                    {lines.map((l) => {
-                      const note = notes.get(l.index);
-                      const role = note?.role ?? 'other';
-                      const roleTag = ROLE_TAG[role];
-                      const isCurrent = l.index === currentIndex;
-                      const isFocus = l.index === focusIndex;
-                      return (
-                        <li key={l.index}>
-                          <button
-                            type="button"
-                            onMouseEnter={() => setHovered(l.index)}
-                            onMouseLeave={() => setHovered(null)}
-                            onFocus={() => setHovered(l.index)}
-                            onBlur={() => setHovered(null)}
-                            aria-current={isCurrent ? 'step' : undefined}
-                            aria-label={`Line ${l.index}: ${l.text}${
-                              l.tacIndex !== null ? `, from quad ${l.tacIndex}` : ''
-                            }`}
+                {/* `w-max min-w-full`: a long directive makes the FIGURE wider
+                    and the frame scrolls, instead of the line running under the
+                    role tag at the right edge. */}
+                <ul className="w-max min-w-full py-1 font-mono type-code">
+                  {lines.map((l) => {
+                    const note = notes.get(l.index);
+                    const role = note?.role ?? 'other';
+                    const roleTag = ROLE_TAG[role];
+                    const isCurrent = l.index === currentIndex;
+                    const isFocus = l.index === focusIndex;
+                    return (
+                      <li key={l.index}>
+                        <button
+                          type="button"
+                          onMouseEnter={() => setHovered(l.index)}
+                          onMouseLeave={() => setHovered(null)}
+                          onFocus={() => setHovered(l.index)}
+                          onBlur={() => setHovered(null)}
+                          aria-current={isCurrent ? 'step' : undefined}
+                          aria-label={`Line ${l.index}: ${l.text}${
+                            l.tacIndex !== null ? `, from quad ${l.tacIndex}` : ''
+                          }`}
+                          className={clsx(
+                            'flex w-full cursor-default items-center gap-2 py-0.5 pr-2 text-left transition-colors duration-[var(--dur-fast)]',
+                            isCurrent && 'bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]',
+                            !isCurrent && isFocus && 'bg-raised',
+                            note?.spillOf !== null &&
+                              note?.spillOf !== undefined &&
+                              'cg-hatch-warn',
+                          )}
+                        >
+                          {/* A real gutter: a rule separates the numbers from the code. */}
+                          <span className="w-10 shrink-0 border-r border-line pr-2 text-right text-2xs text-ink-faint tabular-nums">
+                            {l.index}
+                          </span>
+                          <span
                             className={clsx(
-                              'flex w-full cursor-default items-center gap-2 px-2 py-1 text-left transition-colors',
-                              isCurrent && 'bg-accent-soft',
-                              !isCurrent && isFocus && 'bg-raised',
-                              note?.spillOf !== null &&
-                                note?.spillOf !== undefined &&
-                                'cg-hatch-warn',
+                              'min-w-0 flex-1 whitespace-pre',
+                              l.kind === 'directive' && 'text-ink-faint',
+                              l.kind === 'label' && 'font-semibold text-ink',
+                              l.kind === 'instr' && 'text-ink',
+                              l.kind === 'instr' && role !== 'body' && 'text-ink-muted',
                             )}
                           >
-                            <span className="w-8 shrink-0 text-right text-[10px] text-ink-faint">
-                              {l.index}
-                            </span>
-                            <span
-                              className={clsx(
-                                'min-w-0 flex-1 whitespace-pre',
-                                l.kind === 'directive' && 'text-ink-faint',
-                                l.kind === 'label' && 'font-semibold text-ink',
-                                l.kind === 'instr' && 'text-ink',
-                                l.kind === 'instr' && role !== 'body' && 'text-ink-muted',
+                            {l.kind === 'instr' ? `    ${l.text}` : l.text}
+                          </span>
+                          {note?.spillOf != null && (
+                            <Tag tone="warn" title={`spill traffic for ${note.spillOf}`}>
+                              <Save aria-hidden className="size-2.5" />
+                              {note.spillOf}
+                            </Tag>
+                          )}
+                          {roleTag && role !== 'body' && (
+                            <Tag tone={roleTag.tone}>
+                              {role === 'prologue' && (
+                                <CornerDownLeft aria-hidden className="size-2.5" />
                               )}
-                            >
-                              {l.kind === 'instr' ? `    ${l.text}` : l.text}
-                            </span>
-                            {note?.spillOf != null && (
-                              <Tag tone="warn" title={`spill traffic for ${note.spillOf}`}>
-                                <Save aria-hidden className="size-2.5" />
-                                {note.spillOf}
-                              </Tag>
-                            )}
-                            {roleTag && role !== 'body' && (
-                              <Tag tone={roleTag.tone}>
-                                {role === 'prologue' && (
-                                  <CornerDownLeft aria-hidden className="size-2.5" />
-                                )}
-                                {role === 'epilogue' && (
-                                  <CornerUpRight aria-hidden className="size-2.5" />
-                                )}
-                                {roleTag.label}
-                              </Tag>
-                            )}
-                            {l.tacIndex !== null && (
-                              <span className="shrink-0 text-[10px] text-ink-faint">
-                                q{l.tacIndex}
-                              </span>
-                            )}
-                          </button>
-                        </li>
-                      );
-                    })}
-                    {lines.length === 0 && (
-                      <li className="px-3 py-6 text-ink-faint">
-                        Nothing emitted yet — step forward to write the first directive.
+                              {role === 'epilogue' && (
+                                <CornerUpRight aria-hidden className="size-2.5" />
+                              )}
+                              {roleTag.label}
+                            </Tag>
+                          )}
+                          {l.tacIndex !== null && (
+                            <span className="shrink-0 text-2xs text-ink-faint">q{l.tacIndex}</span>
+                          )}
+                        </button>
                       </li>
-                    )}
-                  </ul>
-                </div>
+                    );
+                  })}
+                  {lines.length === 0 && (
+                    <li className="px-3 py-6 text-ink-faint">Nothing emitted yet.</li>
+                  )}
+                </ul>
               </Panel>
 
-              <div className="flex min-w-0 flex-col gap-3">
-                <Panel title="Provenance" bodyClassName="p-3">
+              <div className="flex min-w-0 flex-col">
+                <Panel title="Provenance">
                   {focusLine === null ? (
-                    <p className="text-sm text-ink-faint">
-                      Hover a line (or step forward) to trace it back through the TAC to the
-                      source.
-                    </p>
+                    <p className="prose-note">Hover a line, or step forward.</p>
                   ) : (
-                    <dl className="flex flex-col gap-2 text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <dt className="text-xs text-ink-faint">asm</dt>
-                        <dd className="font-mono text-ink">{focusLine.text}</dd>
+                    <dl className="flex flex-col">
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line/60 py-1.5">
+                        <dt className="w-16 shrink-0 font-mono text-2xs text-ink-faint">asm</dt>
+                        <dd className="min-w-0 font-mono type-code text-ink">{focusLine.text}</dd>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <dt className="text-xs text-ink-faint">function</dt>
-                        <dd className="font-mono text-ink-muted">
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line/60 py-1.5">
+                        <dt className="w-16 shrink-0 font-mono text-2xs text-ink-faint">function</dt>
+                        <dd className="min-w-0 font-mono type-code text-ink-muted">
                           {focusLine.functionName ?? '— (module level)'}
                         </dd>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <dt className="text-xs text-ink-faint">quad</dt>
-                        <dd className="font-mono text-ink-muted">
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-1.5">
+                        <dt className="w-16 shrink-0 font-mono text-2xs text-ink-faint">quad</dt>
+                        <dd className="min-w-0 font-mono type-code text-ink-muted">
                           {quad ? (
                             <>
                               <Tag tone="accent" className="mr-2">
@@ -227,7 +239,7 @@ function AssemblyView({
                               {formatQuad(quad)}
                             </>
                           ) : (
-                            'none — frame management, not a translated quad'
+                            'none — frame management'
                           )}
                         </dd>
                       </div>
@@ -237,8 +249,11 @@ function AssemblyView({
 
                 <Panel
                   title="Source"
-                  subtitle={span ? `line ${span.line}, column ${span.col}` : 'no span'}
-                  bodyClassName="p-2"
+                  actions={
+                    <span className="section-meta">
+                      {span ? `line ${span.line}, col ${span.col}` : 'no span'}
+                    </span>
+                  }
                 >
                   <CodeStrip
                     source={compilation.source}

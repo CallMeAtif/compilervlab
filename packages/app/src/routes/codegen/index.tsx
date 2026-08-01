@@ -18,10 +18,11 @@
 import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { clsx } from 'clsx';
-import { ArrowLeft, ChevronRight, Cpu, PlayCircle } from 'lucide-react';
-import { PHASES, phaseInfo } from '../../lib/phases';
+import { ArrowLeft } from 'lucide-react';
 import { useCompilationStore, stageInfo } from '../../store/compilation';
+import { CompileCta } from '../../components/CompileCta';
 import { STATUS_META, StatusIcon } from '../../components/StatusBadge';
+import { phaseInfo } from '../../lib/phases';
 import { CodeStrip } from '../../components/viz/CodeStrip';
 import { usePhaseUrlState } from '../../lib/urlState';
 import { DiagnosticList, Notice } from './shared';
@@ -66,15 +67,9 @@ function isTabId(v: string | null): v is TabId {
 // ── route ───────────────────────────────────────────────────────────────────
 
 export default function CodegenPhaseRoute() {
-  const info = phaseInfo('codegen');
   const compilation = useCompilationStore((s) => s.compilation);
   const stale = useCompilationStore((s) => s.stale);
-  const compiling = useCompilationStore((s) => s.compiling);
-  const compile = useCompilationStore((s) => s.compile);
   const pipeline = useCompilationStore((s) => s.pipelineInfo);
-
-  const stage = stageInfo(compilation, stale, 'codegen', (c) => info.summary(c, pipeline));
-  const statusMeta = STATUS_META[stage.status];
 
   // ?tab= and ?k= are phase-specific, but they go through the SAME writer as
   // ?algo=/?step=/?pass= so a selection can never race an in-flight step write.
@@ -145,28 +140,12 @@ export default function CodegenPhaseRoute() {
     // ── no compilation yet ────────────────────────────────────────────────
     if (!compilation || source === null) {
       return (
-        <section className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-line-strong bg-surface p-10 text-center">
-          <Cpu aria-hidden className="size-8 text-ink-faint" strokeWidth={1.5} />
-          <h2 className="text-base font-semibold text-ink">Compile a program to begin</h2>
-          <p className="max-w-lg text-sm text-ink-muted">
-            Code generation runs on the <em>optimized</em> three-address code, so it needs a
-            successful scan, parse, semantic check and IR build first. Press Compile — every
-            stage below then replays step by step, ending with the emitted assembly actually
-            executing.
-          </p>
-          <button
-            type="button"
-            onClick={() => void compile()}
-            disabled={compiling}
-            className="flex h-11 cursor-pointer items-center gap-2 rounded-md border border-accent bg-accent px-4 text-sm font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <PlayCircle aria-hidden className="size-4.5" />
-            {compiling ? 'Compiling…' : 'Compile'}
-          </button>
-          <p className="text-xs text-ink-faint">
-            Or open the <Link to="/" className="underline underline-offset-2">overview</Link> to
-            pick a different example first.
-          </p>
+        <section className="section max-w-2xl py-6">
+          <h2 className="state-title">Nothing compiled yet</h2>
+          <p className="prose-note mt-3">Compile to generate and run the code.</p>
+          {/* The one cold-start button in the app (components/CompileCta), so
+              /codegen's empty state is the same object as /ir's and /opt's. */}
+          <CompileCta className="mt-5 flex flex-col items-start gap-2" />
         </section>
       );
     }
@@ -174,24 +153,20 @@ export default function CodegenPhaseRoute() {
     // ── an upstream phase failed: nothing reached code generation ─────────
     if (compilation.optimized === null) {
       return (
-        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)] lg:items-start">
-          <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
-            <Notice tone="error" title="Code generation never ran">
-              <p className="text-sm">
-                An earlier phase stopped the pipeline, so there is no optimized TAC to select
-                instructions from. These are the diagnostics that blocked it:
-              </p>
-            </Notice>
+        <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)] lg:items-start">
+          <section className="section">
+            <h2 className="state-title text-err">Code generation never ran</h2>
+            <p className="prose-note mt-3">An earlier phase stopped the pipeline.</p>
+            <hr className="rule" />
             <DiagnosticList diagnostics={blockingDiagnostics} />
             {blockingDiagnostics.length === 0 && (
-              <p className="text-sm text-ink-muted">
-                No error diagnostics were recorded — the optimizer produced no output for this
-                program. Try one of the bundled examples from the overview.
-              </p>
+              <p className="prose-note">No diagnostics recorded.</p>
             )}
-          </div>
-          <aside className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold tracking-tight text-ink-muted">Source</h3>
+          </section>
+          <aside className="section">
+            <header className="section-head">
+              <h2 className="section-title">Source</h2>
+            </header>
             <CodeStrip
               source={compilation.source}
               spans={blockingDiagnostics.map((d) => d.span)}
@@ -221,51 +196,46 @@ export default function CodegenPhaseRoute() {
 
   const showRail = compilation !== null && compilation.optimized !== null;
 
+  const info = phaseInfo('codegen');
+  const Icon = info.icon;
+  const stage = stageInfo(compilation, stale, 'codegen', (c) => info.summary(c, pipeline));
+  const statusMeta = STATUS_META[stage.status];
+
   return (
-    <div className="mx-auto flex w-full max-w-450 flex-1 flex-col gap-4 px-3 py-4 sm:px-5">
+    <div className="mx-auto flex w-full max-w-450 flex-1 flex-col px-3 py-4 sm:px-5">
+      {/* ONE band of chrome above the content: back link, title and status on a
+          single line, with the stage rail directly under it. No running head
+          above the title, and no page subtitle — the title says what this is. */}
       <header className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <Link
             to="/"
-            className="flex h-9 items-center gap-1 rounded-md px-2 text-sm text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+            className="-ml-1 flex h-8 shrink-0 items-center gap-1 rounded-sm px-1 font-mono text-2xs tracking-[0.1em] text-ink-muted uppercase transition-colors hover:text-ink"
           >
-            <ArrowLeft aria-hidden className="size-4" />
+            <ArrowLeft aria-hidden className="size-3.5" />
             Overview
           </Link>
-          <span aria-hidden className="h-5 w-px bg-line" />
-          {/* Same shape as components/PhasePage's h1, ordinal included. */}
-          <h1 className="flex items-baseline gap-2 text-lg font-semibold tracking-tight">
-            <Cpu
+          <h1 className="page-title flex items-baseline gap-2.5">
+            <Icon
               aria-hidden
-              className="size-5 shrink-0 translate-y-0.5 text-accent"
-              strokeWidth={2}
+              className="size-5 shrink-0 translate-y-0.5 text-ink-faint"
+              strokeWidth={1.75}
             />
-            <span>
-              <span aria-hidden className="mr-1.5 font-mono text-sm font-normal text-ink-faint">
-                {PHASES.findIndex((p) => p.phase === 'codegen') + 1}/{PHASES.length}
-              </span>
-              {info.title}
-            </span>
+            {info.title}
           </h1>
-          <span
-            className={clsx(
-              'flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
-              statusMeta.chip,
-            )}
-          >
-            <StatusIcon status={stage.status} />
+          <span className={clsx('flex items-center gap-1.5 font-mono text-2xs', statusMeta.text)}>
+            <StatusIcon status={stage.status} className="size-3" />
             {statusMeta.label}
             {stage.summary && (
               <>
                 <span aria-hidden className="text-ink-faint">
                   ·
                 </span>
-                <span className="font-mono">{stage.summary}</span>
+                <span className="text-ink-muted">{stage.summary}</span>
               </>
             )}
           </span>
         </div>
-        <p className="max-w-3xl text-sm text-ink-muted">{info.blurb}</p>
 
         {showRail && (
           <div
@@ -273,16 +243,17 @@ export default function CodegenPhaseRoute() {
             role="tablist"
             aria-label="Code generation stages"
             onKeyDown={onRailKeyDown}
-            className="-mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1"
+            // Same skin as the PhasePage algorithm tablist, plus the stage
+            // ordinal: these six tabs ARE the pipeline, so they read as a
+            // numbered sequence with the current stage on an accent rule.
+            className="artifact-scroll -mb-px border-b border-line"
           >
-            {TABS.map((t, i) => {
-              const selected = t.id === tab;
-              return (
-                <div key={t.id} role="presentation" className="flex shrink-0 items-center">
-                  {i > 0 && (
-                    <ChevronRight aria-hidden className="mx-0.5 size-3.5 text-ink-faint" />
-                  )}
+            <div className="flex min-w-max items-center gap-x-1">
+              {TABS.map((t, i) => {
+                const selected = t.id === tab;
+                return (
                   <button
+                    key={t.id}
                     type="button"
                     role="tab"
                     id={`cg-tab-${t.id}`}
@@ -291,44 +262,39 @@ export default function CodegenPhaseRoute() {
                     tabIndex={selected ? 0 : -1}
                     onClick={() => selectTab(t.id)}
                     className={clsx(
-                      'flex h-11 cursor-pointer items-center gap-2 rounded-md border px-3 text-xs font-medium whitespace-nowrap transition-colors',
+                      'flex h-11 cursor-pointer items-center gap-2 px-2 text-sm whitespace-nowrap transition-colors duration-[var(--dur-fast)] sm:px-2.5',
                       selected
-                        ? 'border-accent bg-accent-soft text-ink'
-                        : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
+                        ? 'border-b-2 border-accent font-semibold text-ink'
+                        : 'border-b-2 border-transparent text-ink-muted hover:border-line-strong hover:text-ink',
                     )}
                   >
                     <span
                       aria-hidden
                       className={clsx(
-                        'flex size-5 items-center justify-center rounded-full border font-mono text-[10px]',
-                        selected ? 'border-accent text-ink' : 'border-line-strong text-ink-faint',
+                        'font-mono type-code tabular-nums',
+                        selected ? 'text-accent' : 'text-ink-faint',
                       )}
                     >
                       {i + 1}
                     </span>
                     {t.label}
                   </button>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </header>
 
       {stale && compilation && (
-        <Notice tone="warn" title="Stale — the source changed since this compilation">
-          <p className="text-sm">
-            Every stage below still replays the previously compiled program. Recompile from the
-            overview to regenerate the code.
-          </p>
-        </Notice>
+        <Notice tone="warn" title="Stale: the source changed since this compile." className="mt-6" />
       )}
 
       <div
         id="cg-tabpanel"
         role={showRail ? 'tabpanel' : undefined}
         aria-labelledby={showRail ? `cg-tab-${tab}` : undefined}
-        className="flex-1"
+        className="mt-8 min-w-0 flex-1"
       >
         {body}
       </div>

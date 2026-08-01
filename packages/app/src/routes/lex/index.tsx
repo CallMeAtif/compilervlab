@@ -1,44 +1,51 @@
 /**
  * /lex — Lexical Analysis.
  *
- * Four tabs over the four `lex.*` trace kinds:
- *   (a) Constructions  regex → NFA → DFA → minimum-state DFA, per token class
- *                      (source-independent: it works before anything is compiled)
- *   (b) Scan           the combined DFA simulated over the real program
- *   (c) Tokens         the token stream and the lexer symbol table
- *   (d) Errors         lexical diagnostics as teaching cards
+ * Six views over the four `lex.*` trace kinds, on ONE nav row:
+ *   thompson / subset / minimize  regex → NFA → DFA → minimum-state DFA, per
+ *                                 token class (works before anything compiles)
+ *   scan                          the combined DFA simulated over the program
+ *   tokens                        the token stream and the lexer symbol table
+ *   errors                        lexical diagnostics as teaching cards
  *
- * Every tab is a `[visualization | TracePanel]` split (stacked below `lg`), and
- * the whole selection — tab, construction stage, token class and step — round
- * trips through the URL.
+ * Every view is a `[visualization | TracePanel]` split (stacked below `lg`), and
+ * the whole selection (tab, construction stage, token class, step) round trips
+ * through the URL.
  */
 import type { ReactNode } from 'react';
-import * as Tabs from '@radix-ui/react-tabs';
-import { clsx } from 'clsx';
-import { Binary, CircleAlert, ScanText, Table2, Workflow } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Binary } from 'lucide-react';
 import { PhasePage } from '../../components/PhasePage';
+import { PhaseNav, type PhaseNavItem } from '../../components/PhaseNav';
 import { CompileCta } from '../../components/CompileCta';
 import { phaseDiagnostics, useCompilationStore } from '../../store/compilation';
-import { LEX_TABS, useLexUrlState, type LexTab } from './lexUrl';
+import { LEX_STAGES, useLexUrlState, type LexStage, type LexTab } from './lexUrl';
 import { tokenClassById } from './tokenClasses';
-import { ConstructionsTab } from './parts/ConstructionsTab';
+import { ConstructionsTab, TokenClassPicker } from './parts/ConstructionsTab';
 import { ScanTab } from './parts/ScanTab';
 import { TokensTab } from './parts/TokensTab';
 import { ErrorsTab } from './parts/ErrorsTab';
 import { EmptyState, LoadingPanel, Note } from './parts/ui';
 import './lex.css';
 
-const TAB_META: Record<LexTab, { label: string; hint: string; icon: LucideIcon }> = {
-  constructions: {
-    label: 'Constructions',
-    hint: 'regex → NFA → DFA → min-DFA',
-    icon: Workflow,
-  },
-  scan: { label: 'Scan', hint: 'the DFA running on your source', icon: ScanText },
-  tokens: { label: 'Tokens & symbols', hint: 'the artifacts handed to the parser', icon: Table2 },
-  errors: { label: 'Errors', hint: 'lexical diagnostics', icon: CircleAlert },
-};
+/**
+ * ONE nav row for the phase: the three chained constructions, then the scanner
+ * running over the real program, then what it produced. The stage chain used to
+ * be a second tab row above this one saying the same thing.
+ */
+type LexNavId = LexStage | 'scan' | 'tokens' | 'errors';
+
+const LEX_NAV: ReadonlyArray<PhaseNavItem<LexNavId>> = [
+  { id: 'thompson', label: 'Thompson NFA', hint: 'Algorithm 3.23 — regex to NFA' },
+  { id: 'subset', label: 'Subset construction', hint: 'Algorithm 3.20 — NFA to DFA' },
+  { id: 'minimize', label: 'DFA minimization', hint: 'Algorithm 3.39 — merge equivalent states' },
+  { id: 'scan', label: 'Tokenize', hint: 'the DFA run over the compiled source' },
+  { id: 'tokens', label: 'Tokens & symbols', hint: 'the token stream and the symbol table' },
+  { id: 'errors', label: 'Errors', hint: 'lexical diagnostics' },
+];
+
+function navId(tab: LexTab, stage: LexStage): LexNavId {
+  return tab === 'constructions' ? stage : tab;
+}
 
 /** Tabs (b)–(d) read the compiled program; (a) is source-independent. */
 function SourceGate({
@@ -64,29 +71,15 @@ function SourceGate({
   if (compilation === null) {
     return (
       <EmptyState title="Compile a program to begin" icon={Binary}>
-        <p>
-          The scanner needs a program to run on — compile the current source, or open the
-          overview to pick an example or write your own C-subset program.
-        </p>
-        <CompileCta className="mt-3 flex flex-col items-center gap-2" />
-        <p className="mt-2">
-          The <span className="font-medium">Constructions</span> tab needs nothing compiled — the
-          regex → NFA → DFA pipeline depends only on the token specifications, so you can step
-          through it right now.
-        </p>
+        <CompileCta className="flex flex-col items-start gap-2" />
+        <p className="mt-3">Constructions runs without a compiled program.</p>
       </EmptyState>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {stale && (
-        <Note tone="warn" title="This view is showing the previous compilation">
-          The source has been edited since it was compiled. Press{' '}
-          <span className="font-medium">Compile</span> on the overview to re-scan — nothing
-          recompiles behind your back.
-        </Note>
-      )}
+    <div className="flex flex-col gap-5">
+      {stale && <Note tone="warn" title="Showing the previous compilation" />}
       {children({ source: compilation.source, compilationId: compilation.id })}
     </div>
   );
@@ -99,90 +92,83 @@ export function LexPhaseView() {
   const lexDiagnostics = phaseDiagnostics(compilation, 'lex');
   const errorCount = lexDiagnostics.filter((d) => d.severity === 'error').length;
 
+  const items = LEX_NAV.map((item) =>
+    item.id === 'errors' && errorCount > 0
+      ? {
+          ...item,
+          badge: (
+            <span className="font-mono text-3xs text-err tabular-nums">{errorCount}</span>
+          ),
+        }
+      : item,
+  );
+
+  const nav = (
+    <PhaseNav
+      label="Lexical analysis views"
+      items={items}
+      value={navId(tab, stage)}
+      onSelect={(id) =>
+        LEX_STAGES.includes(id as LexStage)
+          ? select({ tab: 'constructions', stage: id as LexStage })
+          : select({ tab: id as LexTab })
+      }
+      // The token class filters the same three constructions, so it rides the
+      // nav rule instead of costing a band of its own.
+      aside={
+        tab === 'constructions' ? (
+          <TokenClassPicker value={cls} onChange={(id) => select({ tokenClass: id })} />
+        ) : null
+      }
+    />
+  );
+
   return (
-    <Tabs.Root
-      value={tab}
-      onValueChange={(v) => select({ tab: v as LexTab })}
-      className="flex flex-col gap-4"
-    >
-      <Tabs.List
-        aria-label="Lexical analysis views"
-        className="flex flex-wrap gap-1.5 border-b border-line pb-2"
-      >
-        {LEX_TABS.map((id) => {
-          const meta = TAB_META[id];
-          const Icon = meta.icon;
-          return (
-            <Tabs.Trigger
-              key={id}
-              value={id}
-              className={clsx(
-                'flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-left transition-colors',
-                'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
-                'data-[state=active]:border-accent data-[state=active]:bg-accent-soft data-[state=active]:text-ink',
-              )}
-            >
-              <Icon aria-hidden className="size-4 shrink-0" />
-              <span className="flex flex-col leading-tight">
-                <span className="text-sm font-medium">{meta.label}</span>
-                <span className="text-[10px] text-ink-faint">{meta.hint}</span>
-              </span>
-              {id === 'errors' && errorCount > 0 && (
-                <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-err/50 bg-err-soft px-1 font-mono text-[10px] font-semibold text-err">
-                  {errorCount}
-                </span>
-              )}
-            </Tabs.Trigger>
-          );
-        })}
-      </Tabs.List>
+    <PhasePage phase="lex" nav={nav}>
+      <div role="tabpanel" aria-label="Lexical analysis visualization" className="min-w-0">
+        {tab === 'constructions' && (
+          <ConstructionsTab
+            cls={cls}
+            stage={stage}
+            initialStep={step}
+            onSelectClass={(id) => select({ tokenClass: id })}
+            onGoToScan={() => select({ tab: 'scan' })}
+          />
+        )}
 
-      <Tabs.Content value="constructions" className="focus-visible:outline-none">
-        <ConstructionsTab
-          cls={cls}
-          stage={stage}
-          initialStep={step}
-          onSelectClass={(id) => select({ tokenClass: id })}
-          onSelectStage={(s) => select({ stage: s })}
-        />
-      </Tabs.Content>
+        {tab === 'scan' && (
+          <SourceGate>
+            {({ source, compilationId }) => (
+              <ScanTab source={source} compilationId={compilationId} initialStep={step} />
+            )}
+          </SourceGate>
+        )}
 
-      <Tabs.Content value="scan" className="focus-visible:outline-none">
-        <SourceGate>
-          {({ source, compilationId }) => (
-            <ScanTab source={source} compilationId={compilationId} initialStep={step} />
-          )}
-        </SourceGate>
-      </Tabs.Content>
+        {tab === 'tokens' && (
+          <SourceGate>
+            {({ source, compilationId }) => (
+              <TokensTab source={source} compilationId={compilationId} initialStep={step} />
+            )}
+          </SourceGate>
+        )}
 
-      <Tabs.Content value="tokens" className="focus-visible:outline-none">
-        <SourceGate>
-          {({ source, compilationId }) => (
-            <TokensTab source={source} compilationId={compilationId} initialStep={step} />
-          )}
-        </SourceGate>
-      </Tabs.Content>
-
-      <Tabs.Content value="errors" className="focus-visible:outline-none">
-        <SourceGate>
-          {({ source, compilationId }) => (
-            <ErrorsTab
-              source={source}
-              compilationId={compilationId}
-              initialStep={step}
-              diagnostics={lexDiagnostics}
-            />
-          )}
-        </SourceGate>
-      </Tabs.Content>
-    </Tabs.Root>
+        {tab === 'errors' && (
+          <SourceGate>
+            {({ source, compilationId }) => (
+              <ErrorsTab
+                source={source}
+                compilationId={compilationId}
+                initialStep={step}
+                diagnostics={lexDiagnostics}
+              />
+            )}
+          </SourceGate>
+        )}
+      </div>
+    </PhasePage>
   );
 }
 
 export default function LexPhaseRoute() {
-  return (
-    <PhasePage phase="lex">
-      <LexPhaseView />
-    </PhasePage>
-  );
+  return <LexPhaseView />;
 }

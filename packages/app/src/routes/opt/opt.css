@@ -1,0 +1,103 @@
+/**
+ * Phase-local styles for /opt.
+ *
+ * Only existing design tokens are used (styles/theme.css); this file adds no new
+ * visual language. It exists for one thing Tailwind utilities at the call site
+ * cannot reach: the interior of the SHARED `components/DiffView`, which /syntax
+ * also renders and which this phase therefore must not edit directly. The diff
+ * is opted into the editorial treatment by adding `diff-editorial` to the
+ * className DiffView already forwards onto its root.
+ *
+ * Editorially: a changed line is not a coloured block. It is a line with a
+ * LEADING MARKER (the ± glyph column DiffView already renders), a rule in the
+ * status colour on that marker, and type weight on the text that changed. The
+ * heavy `bg-ok-soft` / `bg-err-soft` / `bg-warn-soft` row fills are dissolved
+ * into a wash so the instructions stay the heaviest thing on the row.
+ *
+ * These rules are deliberately UNLAYERED: Tailwind's utilities live in
+ * `@layer utilities`, and an unlayered declaration outranks any layered one, so
+ * `background-color: transparent` here beats the `bg-*-soft` utility on the row
+ * without a specificity arms race.
+ */
+
+/* ── The 13px listing size ─────────────────────────────────────────────────
+   `text-code` CANNOT be used as a font size in this app: styles/index.css also
+   defines `--color-code`, and Tailwind resolves `text-*` against the colour
+   namespace first, so `text-code` compiles to `color: var(--code-bg)` — code
+   painted in the code background. This is the type-scale's listing size, read
+   straight off the same token EDITORIAL.md names.                            */
+.type-code {
+  font-size: var(--text-code);
+  line-height: var(--text-code--line-height);
+}
+
+.diff-editorial tbody tr.bg-ok-soft,
+.diff-editorial tbody tr.bg-err-soft,
+.diff-editorial tbody tr.bg-warn-soft {
+  background-color: transparent;
+}
+
+/* A 3px rule on the leading edge of the marker cell — shape, not just colour,
+   and it survives greyscale next to the +/−/~ glyph it sits behind. */
+.diff-editorial tbody tr.bg-ok-soft > th {
+  box-shadow: inset 3px 0 0 var(--ok);
+}
+.diff-editorial tbody tr.bg-err-soft > th {
+  box-shadow: inset 3px 0 0 var(--err);
+}
+.diff-editorial tbody tr.bg-warn-soft > th {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
+/* The faintest possible wash, so a run of changes still groups visually. */
+.diff-editorial tbody tr.bg-ok-soft > th,
+.diff-editorial tbody tr.bg-ok-soft > td {
+  background-color: color-mix(in srgb, var(--ok-soft) 45%, transparent);
+}
+.diff-editorial tbody tr.bg-err-soft > th,
+.diff-editorial tbody tr.bg-err-soft > td {
+  background-color: color-mix(in srgb, var(--err-soft) 45%, transparent);
+}
+.diff-editorial tbody tr.bg-warn-soft > th,
+.diff-editorial tbody tr.bg-warn-soft > td {
+  background-color: color-mix(in srgb, var(--warn-soft) 45%, transparent);
+}
+
+/* Type weight carries "this is the new text". `td:nth-of-type(2)` is the AFTER
+   column (the row is th + before-td + after-td + justification-td). */
+.diff-editorial tbody tr.bg-ok-soft > td:nth-of-type(2),
+.diff-editorial tbody tr.bg-warn-soft > td:nth-of-type(2) {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* A removed line is already struck through; drop it to the recessive ink so the
+   surviving column reads first. */
+.diff-editorial tbody tr.bg-err-soft > td:nth-of-type(1) {
+  color: var(--ink-muted);
+}
+
+/* Unchanged lines are context: present, aligned, and quiet. */
+.diff-editorial tbody tr:not([class*='bg-']) > td {
+  color: var(--ink-muted);
+}
+
+/* The listing is the artifact, so give it the reading size the rest of the
+   phase uses for code rather than the dense-grid size. */
+.diff-editorial table {
+  font-size: var(--text-code);
+  line-height: var(--text-code--line-height);
+}
+
+/* The column heads are metadata, not content. They stay OPAQUE — the head is
+   `position: sticky`, so a transparent fill would let the listing scroll
+   through it — but they sit on the page's own paper rather than on a band. */
+.diff-editorial thead tr {
+  background: var(--surface);
+}
+.diff-editorial thead th {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}

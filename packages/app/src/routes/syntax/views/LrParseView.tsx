@@ -18,6 +18,7 @@ import {
 } from '@lab/core/grammar/lr-parse.js';
 import { useStepper } from '../../../lib/useStepper';
 import { CodeStrip } from '../../../components/viz/CodeStrip';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useTrace } from '../lib/useTrace';
 import type { ViewContext } from '../lib/view';
 import { LR_TABLES, type LrTableChoice } from '../lib/algorithms';
@@ -60,12 +61,9 @@ export function LrParseView({
             tone="warn"
             title={`This grammar already uses ${ctx.augmented.start} as a nonterminal`}
           >
-            Augmentation (§4.6.3) adds a fresh start symbol named{' '}
-            <span className="font-mono">{ctx.augmented.start}</span>, but this grammar already has a
-            nonterminal with that name, so the two collide and the generated table has no GOTO
-            column for it. The item-set and table views still show the construction; only the
-            driver needs that column. Try <span className="font-mono">dragon-4.1</span> for the
-            Fig 4.38 parse, or the LL(1) parse on this grammar.
+            Augmentation (§4.6.3) needs a fresh start symbol, so the table has no GOTO column for{' '}
+            <span className="font-mono">{ctx.augmented.start}</span>. The item-set and table views
+            still run. Use <span className="font-mono">dragon-4.1</span> for the Fig 4.38 parse.
           </Note>
         )}
         <Diagnostics title="The LR parse could not be run" diagnostics={diagnostics} />
@@ -155,7 +153,7 @@ function Ready({
           </Panel>
 
           {isC && ctx.source.length > 0 && (
-            <Panel title="Source" subtitle="the token the driver is looking at" bodyClassName="p-2">
+            <Panel title="Source">
               <CodeStrip source={ctx.source} spans={spans} maxHeight="14rem" />
             </Panel>
           )}
@@ -163,13 +161,13 @@ function Ready({
           <Panel
             title="Parse forest"
             subtitle={`${count} node${count === 1 ? '' : 's'} · ${state.roots.length} root${state.roots.length === 1 ? '' : 's'}`}
-            bodyClassName="p-2"
-          >
+                      >
             <TreePanel
               root={root}
               nodeCount={count}
               currentIds={currentIds}
-              emptyLabel="Shift a token to put the first leaf on the forest."
+              emptyLabel="Shift a token to begin."
+              controls={<FullscreenTransport stepper={stepper} />}
             />
           </Panel>
         </>
@@ -184,20 +182,19 @@ function Ready({
             { label: 'error', pred: (s) => s.event.kind === 'parse/error' },
           ]}
         >
-          <Panel title="Driver state" bodyClassName="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-1.5">
+          <Panel title="Driver state" bodyClassName="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1">
               <Stat label="table" value={table.toUpperCase()} />
               <Stat label="state" value={state.stack[state.stack.length - 1] ?? '—'} />
               <Stat label="lookahead" value={lookahead ? (lookahead.lexeme ?? lookahead.term) : '—'} />
               <Stat label="input" value={`${state.cursor} / ${Math.max(0, state.input.length - 1)}`} />
             </div>
             {reduceProd && (
-              <p className="rounded-md border border-line bg-canvas p-2 font-mono text-xs text-ink">
+              <p className="border-l-2 border-line-strong py-1 pl-3 font-mono text-xs text-ink">
                 <span className="mr-2 text-[10px] text-ink-faint">p{reduceProd.id}</span>
                 {formatProduction(reduceProd)}
-                <span className="mt-1 block font-sans text-[11px] text-ink-muted">
-                  Pop {reduceProd.rhs.length} state(s), push GOTO of the uncovered state — the
-                  popped subtrees become the children of the new {reduceProd.lhs} node.
+                <span className="mt-1 block text-[11px] text-ink-muted">
+                  pop {reduceProd.rhs.length} · push GOTO
                 </span>
               </p>
             )}
@@ -207,18 +204,14 @@ function Ready({
                   state {state.error.state} · found ‘{state.error.found}’
                 </p>
                 <p className="mt-1">
-                  In this configuration the parser can only continue with{' '}
-                  <span className="font-mono">{`{ ${state.error.expected.join(', ')} }`}</span>. A
-                  blank cell is how an LR table reports an error, and it does so at the earliest
-                  possible moment — the viable-prefix property (§4.6.3).
+                  Only <span className="font-mono">{`{ ${state.error.expected.join(', ')} }`}</span>{' '}
+                  can continue here (§4.6.3).
                 </p>
               </Note>
             )}
             {state.accepted && (
               <Note tone="info" title="Accepted">
-                ACTION[state, $] = acc: the stack holds the start symbol and the input is exhausted.
-                For <span className="font-mono">c-subset</span> with the LALR table, this is
-                literally the parse the rest of the compiler consumes.
+                ACTION[state, $] = acc.
               </Note>
             )}
           </Panel>
@@ -232,10 +225,8 @@ function Ready({
 function StackStrip({ stack, symbols }: { stack: readonly number[]; symbols: readonly string[] }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-[11px] font-semibold tracking-wide text-ink-faint uppercase">
-        Stack (bottom → top)
-      </span>
-      <div className="flex max-h-20 flex-wrap items-center gap-0.5 overflow-auto rounded-md border border-line bg-canvas p-1.5 font-mono text-[11px]">
+      <span className="group-label">Stack (bottom → top)</span>
+      <div className="framed artifact-scroll flex max-h-20 flex-wrap items-center gap-0.5 p-1.5 font-mono text-2xs">
         {stack.map((s, i) => (
           <span key={i} className="flex items-center gap-0.5">
             {i > 0 && (

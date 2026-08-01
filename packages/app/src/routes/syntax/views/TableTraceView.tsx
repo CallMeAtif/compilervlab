@@ -16,6 +16,7 @@ import { terminalColumns } from '../lib/grammars';
 import { GrammarRail, productionRefs } from '../components/GrammarRail';
 import { ViewGrid } from '../components/Layout';
 import { ConflictList, CurrentRowStrip, LrTable } from '../components/LrTable';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import {
   Diagnostics,
   Note,
@@ -34,8 +35,6 @@ export function SlrView(ctx: ViewContext) {
       kind="syntax.slr"
       reducer={slrReducer}
       title="SLR(1) ACTION / GOTO"
-      subtitle="§4.6.4 · Algorithm 4.46 (Fig 4.37)"
-      explainer="SLR uses the LR(0) automaton and reduces by A → α on every terminal of FOLLOW(A). That is an over-approximation: a lookahead may be in FOLLOW(A) without being viable in this particular state, and when it collides with a shift the grammar is declared not SLR(1) even though it may still be LR(1)."
       showFollow
       loadingLabel="Building the SLR(1) table…"
       failureTitle="The SLR(1) table could not be built"
@@ -58,8 +57,6 @@ export function Lr1TableView({
       kind="syntax.lr1-table"
       reducer={lr1TableReducer}
       title="Canonical LR(1) ACTION / GOTO"
-      subtitle="§4.7.3 · Algorithm 4.56 (Fig 4.42)"
-      explainer="Canonical LR(1) reduces by A → α only on the lookahead the item itself carries — not on all of FOLLOW(A). That precision is what removes the SLR conflicts, at the cost of the state explosion the item-set view shows."
       headerActions={
         <Segmented label="LR(1) view" value={subView} options={LR1_VIEWS} onChange={onSubView} size="sm" />
       }
@@ -80,11 +77,8 @@ export function Lr1TableView({
             </>
           }
         >
-          Algorithm 4.56 fills one row per LR(1) state, so it needs the whole collection. This
-          grammar exceeds the lab’s 400-state cap, and the construction refuses rather than
-          producing a table with missing rows. That is not a limitation of the lab: it is the
-          practical reason canonical LR(1) tables are not used. LALR(1) merges the same-core states
-          first and produces a table with exactly as many rows as the LR(0) machine.
+          Algorithm 4.56 needs one row per LR(1) state, and this grammar passes the 400-state cap.
+          LALR(1) merges the same-core states first, so its table is LR(0)-sized.
         </Note>
       }
     />
@@ -96,8 +90,6 @@ function TableTrace({
   kind,
   reducer,
   title,
-  subtitle,
-  explainer,
   showFollow,
   headerActions,
   loadingLabel,
@@ -108,8 +100,6 @@ function TableTrace({
   kind: 'syntax.slr' | 'syntax.lr1-table';
   reducer: Reducer<TableFields, TableEvent>;
   title: string;
-  subtitle: string;
-  explainer: string;
   showFollow?: boolean;
   headerActions?: ReactNode;
   loadingLabel: string;
@@ -127,8 +117,6 @@ function TableTrace({
         ctx={ctx}
         trace={trace}
         title={title}
-        subtitle={subtitle}
-        explainer={explainer}
         showFollow={showFollow}
         headerActions={headerActions}
       />
@@ -149,16 +137,12 @@ function Ready({
   ctx,
   trace,
   title,
-  subtitle,
-  explainer,
   showFollow,
   headerActions,
 }: {
   ctx: ViewContext;
   trace: Trace<TableFields, TableEvent>;
   title: string;
-  subtitle: string;
-  explainer: string;
   showFollow?: boolean;
   headerActions?: ReactNode;
 }) {
@@ -205,9 +189,7 @@ function Ready({
             title={title}
             subtitle={`${state.action.length} / ${totalRows} rows`}
             actions={headerActions}
-            bodyClassName="flex flex-col gap-3"
           >
-            <p className="text-xs leading-relaxed text-ink-muted">{explainer}</p>
             <LrTable
               ag={ag}
               action={state.action}
@@ -217,14 +199,15 @@ function Ready({
               nonterminals={nonterminals}
               rowName={(i) => String(i)}
               current={current}
+              controls={<FullscreenTransport stepper={stepper} />}
             />
           </Panel>
 
           {showFollow && (
             <Panel
-              title="FOLLOW sets used for the reduce entries"
+              title="FOLLOW sets"
               subtitle={`${Object.keys(state.follow).length} nonterminals`}
-              bodyClassName="max-h-64 overflow-auto"
+              bodyClassName="framed artifact-scroll max-h-64 p-3"
             >
               <ul className="flex flex-col gap-0.5 font-mono text-xs">
                 {Object.entries(state.follow).map(([nt, set]) => (
@@ -234,7 +217,7 @@ function Ready({
                   </li>
                 ))}
                 {Object.keys(state.follow).length === 0 && (
-                  <li className="text-ink-faint">Step forward — the FOLLOW sets are reported first.</li>
+                  <li className="text-ink-faint">Step forward.</li>
                 )}
               </ul>
             </Panel>
@@ -253,8 +236,8 @@ function Ready({
             },
           ]}
         >
-          <Panel title="Row being filled" bodyClassName="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-1.5">
+          <Panel title="Row being filled" bodyClassName="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1">
               <Stat label="rows" value={`${state.action.length} / ${totalRows}`} />
               <Stat label="conflicts" value={state.conflicts.length} />
             </div>
@@ -267,14 +250,14 @@ function Ready({
             />
           </Panel>
 
-          <Panel title="Conflicts" bodyClassName="flex flex-col gap-2">
+          <Panel title="Conflicts" bodyClassName="flex flex-col gap-3">
             <ConflictList
               ag={ag}
               conflicts={state.conflicts}
               emptyLabel={
                 trace.final().conflicts.length === 0
-                  ? 'Every cell is claimed by exactly one action: this grammar is handled by this method without a conflict.'
-                  : `None yet — ${trace.final().conflicts.length} appear later in the construction.`
+                  ? 'None. Every cell has exactly one action.'
+                  : `None yet. ${trace.final().conflicts.length} appear later.`
               }
               onSelect={(c) => {
                 const idx = trace.findIndex(

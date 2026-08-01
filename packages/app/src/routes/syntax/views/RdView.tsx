@@ -15,6 +15,7 @@ import {
   type RDState,
 } from '@lab/core/grammar/recursive-descent.js';
 import { useStepper } from '../../../lib/useStepper';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useTrace } from '../lib/useTrace';
 import type { ViewContext } from '../lib/view';
 import { GrammarRail, productionRefs } from '../components/GrammarRail';
@@ -93,20 +94,22 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<RDState, RDEvent
       }
       main={
         <>
-          <Panel title="Input" bodyClassName="flex flex-col gap-2">
+          {/* The ribbon labels itself ("Token stream · 3 / 5 consumed"); it does
+              not also need a section title over it. */}
+          <div className="mb-7">
             <InputRibbon symbols={state.input} pos={state.pos} label="Token stream" />
-          </Panel>
+          </div>
           <Panel
             title="Call tree"
             subtitle={`${count} node${count === 1 ? '' : 's'} · ${callStack.length} procedure${callStack.length === 1 ? '' : 's'} on the stack`}
-            bodyClassName="p-2"
-          >
+                      >
             <TreePanel
               root={root}
               nodeCount={count}
               currentIds={currentIds}
               visitedIds={visitedIds}
-              emptyLabel="Step forward to call the procedure for the start symbol."
+              emptyLabel="Step forward to call the start symbol."
+              controls={<FullscreenTransport stepper={stepper} />}
             />
           </Panel>
         </>
@@ -121,28 +124,25 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<RDState, RDEvent
             { label: 'error', pred: (s) => s.event.kind === 'rd.error' },
           ]}
         >
-          <Panel title="Chosen production" bodyClassName="flex flex-col gap-2">
+          <Panel title="Chosen production" bodyClassName="flex flex-col gap-3">
             {selected?.production ? (
               <>
                 <p className="font-mono text-sm text-ink">
                   <span className="mr-2 text-[10px] text-ink-faint">p{selected.production.id}</span>
                   {formatProduction(selected.production)}
                 </p>
-                <p className="text-xs leading-relaxed text-ink-muted">
+                <p className="prose-note text-sm">
                   Lookahead <span className="font-mono text-ink">{selected.lookahead}</span> —{' '}
                   {selected.why}.
                 </p>
               </>
             ) : (
-              <p className="text-xs leading-relaxed text-ink-muted">
-                On <span className="font-mono">select</span> steps this shows the alternative the
-                lookahead picked and the FIRST/FOLLOW membership that justified it.
-              </p>
+              <p className="prose-note text-sm">Step to a choice.</p>
             )}
           </Panel>
 
-          <Panel title="Call stack" bodyClassName="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-1.5">
+          <Panel title="Call stack" bodyClassName="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1">
               <Stat label="pos" value={`${state.pos} / ${state.input.length}`} />
               <Stat
                 label="lookahead"
@@ -150,7 +150,7 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<RDState, RDEvent
               />
               <Stat label="status" value={state.status} />
             </div>
-            <ol className="flex max-h-48 flex-col gap-0.5 overflow-auto rounded-md border border-line bg-canvas p-1.5 font-mono text-[11px]">
+            <ol className="framed artifact-scroll flex max-h-48 flex-col gap-0.5 p-1.5 font-mono text-2xs">
               {callStack.map((n, i) => (
                 <li key={n.id} className="flex items-baseline gap-2">
                   <span className="text-ink-faint">{i}</span>
@@ -183,8 +183,7 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<RDState, RDEvent
             )}
             {state.status === 'accepted' && (
               <Note tone="info" title="Accepted">
-                The start procedure returned and the input was exhausted — the call tree is the
-                parse tree.
+                The start procedure returned on an empty input.
               </Note>
             )}
           </Panel>

@@ -5,6 +5,10 @@
  * pass so the shape of the computation is visible ("pass 3 added nothing, so we
  * stop"). Each cell holds exactly the symbols that pass contributed, and the
  * justifying §4.4.2 rule for the newest addition is in the ExplainCard.
+ *
+ * The tables used to carry a standing caption each and the panel a 40-word
+ * paragraph about fixpoints. Deleted: the column headers say "Pass 3", the pass
+ * count says "4 passes", and the per-step prose says what this step did.
  */
 import { useMemo } from 'react';
 import { clsx } from 'clsx';
@@ -19,7 +23,7 @@ import { useTrace } from '../lib/useTrace';
 import type { ViewContext } from '../lib/view';
 import { GrammarRail, productionRefs } from '../components/GrammarRail';
 import { ViewGrid } from '../components/Layout';
-import { Diagnostics, Legend, Panel, Skeleton, StepPanel, Stat } from '../components/ui';
+import { Diagnostics, Panel, Skeleton, StepPanel, Stat } from '../components/ui';
 
 type Phase = 'first' | 'follow';
 
@@ -123,7 +127,6 @@ function Ready({
         <>
           <SetsTable
             title="FIRST"
-            caption="FIRST(A) — the terminals that can begin a string derived from A, plus ε when A ⇒* ε."
             nonterminals={ctx.grammar.nonterminals}
             passes={passes.first}
             phase="first"
@@ -133,7 +136,6 @@ function Ready({
           />
           <SetsTable
             title="FOLLOW"
-            caption="FOLLOW(A) — the terminals that can appear immediately to the right of A in some sentential form. Pass 0 is rule 1: $ ∈ FOLLOW(start)."
             nonterminals={ctx.grammar.nonterminals}
             passes={passes.follow}
             phase="follow"
@@ -151,18 +153,13 @@ function Ready({
             { label: 'fixpoint', pred: (s) => s.event.kind === 'ff.fixpoint' },
           ]}
         >
-          <Panel title="Where the computation is" bodyClassName="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-1.5">
-              <Stat label="additions" value={`${visible.length} / ${additions.length}`} />
-              <Stat label="FIRST passes" value={passes.first.length} />
-              <Stat label="FOLLOW passes" value={Math.max(0, passes.follow.length - 1)} />
-            </div>
-            <p className="text-xs leading-relaxed text-ink-muted">
-              Both computations are fixpoints: the rules are applied to every production, in
-              declaration order, over and over until a whole pass adds nothing. A pass column
-              that is empty everywhere is the proof that the computation has converged.
-            </p>
-          </Panel>
+          {/* Counters, not a panel: three numbers need no heading and no
+              paragraph about what a fixpoint is. */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1">
+            <Stat label="additions" value={`${visible.length} / ${additions.length}`} />
+            <Stat label="FIRST passes" value={passes.first.length} />
+            <Stat label="FOLLOW passes" value={Math.max(0, passes.follow.length - 1)} />
+          </div>
         </StepPanel>
       }
     />
@@ -171,7 +168,6 @@ function Ready({
 
 function SetsTable({
   title,
-  caption,
   nonterminals,
   passes,
   phase,
@@ -180,7 +176,6 @@ function SetsTable({
   newest,
 }: {
   title: string;
-  caption: string;
   nonterminals: readonly string[];
   passes: readonly number[];
   phase: Phase;
@@ -192,10 +187,9 @@ function SetsTable({
     <Panel
       title={`${title} sets`}
       subtitle={`${passes.length} pass${passes.length === 1 ? '' : 'es'}`}
-      bodyClassName="flex flex-col gap-2"
+      bodyClassName="flex flex-col gap-3"
     >
-      <p className="text-xs leading-relaxed text-ink-muted">{caption}</p>
-      <div className="max-h-[26rem] min-w-0 overflow-auto rounded-md border border-line">
+      <div className="framed artifact-scroll max-h-[26rem] min-w-0">
         <table className="w-full border-collapse font-mono text-xs">
           <thead className="sticky top-0 z-10 bg-raised text-ink-muted">
             <tr>
@@ -238,6 +232,7 @@ function SetsTable({
                             return (
                               <span
                                 key={sym}
+                                title={isNewest ? 'added by this step' : 'added earlier'}
                                 className={clsx(
                                   'inline-flex h-5 items-center rounded border px-1',
                                   isNewest
@@ -268,18 +263,6 @@ function SetsTable({
           </tbody>
         </table>
       </div>
-      <Legend
-        items={[
-          {
-            label: 'added by this step',
-            swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border border-accent bg-accent-soft" />,
-          },
-          {
-            label: 'added by an earlier step of that pass',
-            swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border border-line bg-canvas" />,
-          },
-        ]}
-      />
     </Panel>
   );
 }

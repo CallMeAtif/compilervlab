@@ -21,6 +21,16 @@ TAC, x86-64) get the contrast budget. Density is high on purpose — the whole
 point is to show a real ACTION/GOTO table, not a cartoon of one — so legibility
 is defended by type, alignment and whitespace rather than by showing less.
 
+The page is **paper**: a warm off-white sheet, warm near-black ink, hairline
+rules. Regions are separated by a rule and 2 rem of space, never by stacking a
+lighter card on a darker canvas. The **one cool hue in the system is the
+accent**, which is what makes it legible as "the current step" against a
+status vocabulary (amber / red / green) that owns the whole warm range. The
+structural rules this implies are in [`docs/EDITORIAL.md`](../../../../docs/EDITORIAL.md);
+the primitives that express them (`.section`, `.section-head`, `.section-title`,
+`.subsection-title`, `.state-title`, `.group-label`, `.page-title`,
+`.prose-note`, `.framed`, `.rule`) live in `index.css`.
+
 ---
 
 ## 2. Colour semantics
@@ -57,25 +67,27 @@ stated.
 
 | pair | light | dark | required |
 | --- | --- | --- | --- |
-| `ink` on surface / canvas / raised | 16.81 / 15.69 / 14.74 | 14.54 / 15.74 / 13.28 | 4.5 |
-| `ink-muted` on surface / canvas / raised | 6.78 / 6.32 / 5.94 | 7.78 / 8.43 / 7.11 | 4.5 |
-| `ink-faint` on surface / canvas / raised | 5.74 / 5.35 / 5.03 | 6.06 / 6.56 / 5.54 | 4.5 |
-| `accent` on surface / accent-soft | 6.29 / 5.15 | 6.34 / 4.65 | 4.5 (also the "current" ring, ≥ 3) |
-| `on-accent` on `accent` | 6.29 | 6.87 | 4.5 |
-| `ok` on `ok-soft` / surface | 5.31 / 6.28 | 6.58 / 8.04 | 4.5 |
-| `warn` on `warn-soft` / surface | 5.48 / 6.17 | 6.98 / 8.34 | 4.5 |
-| `err` on `err-soft` / surface | 5.63 / 6.57 | 6.56 / 7.31 | 4.5 |
-| `on-err` on `err` (count badge) | 6.57 | 7.92 | 4.5 |
-| `control` on surface / canvas / raised | 3.60 / 3.36 / 3.15 | 3.60 / 3.89 / 3.29 | 3.0 |
-| `ink` on `*-soft` cards | ≥ 14.22 | ≥ 11.91 | 4.5 |
+| `ink` on surface / canvas / raised | 15.52 / 14.22 / 13.35 | 14.25 / 15.03 / 12.90 | 4.5 |
+| `ink-muted` on surface / canvas / raised | 8.03 / 7.36 / 6.91 | 6.84 / 7.21 / 6.19 | 4.5 |
+| `ink-faint` on surface / canvas / raised | 6.85 / 6.27 / 5.89 | 5.76 / 6.07 / 5.21 | 4.5 |
+| `accent` on surface / raised / accent-soft | 5.40 / 4.65 / 4.80 | 7.06 / 6.39 / 5.90 | 4.5 (also the "current" ring, ≥ 3) |
+| `on-accent` on `accent` | 5.72 | 7.48 | 4.5 |
+| `ok` on `ok-soft` / surface | 5.54 / 6.19 | 7.17 / 8.04 | 4.5 |
+| `warn` on `warn-soft` / surface | 5.13 / 5.58 | 7.09 / 8.01 | 4.5 |
+| `err` on `err-soft` / surface | 5.52 / 6.20 | 6.68 / 7.20 | 4.5 |
+| `on-err` on `err` (count badge) | 6.57 | 7.63 | 4.5 |
+| `control` on surface / canvas / raised | 4.89 / 4.48 / 4.21 | 3.84 / 4.05 / 3.48 | 3.0 |
+| `ink` on `*-soft` and `code-bg` | ≥ 13.78 | ≥ 11.91 | 4.5 |
+| `ink-muted` on `accent-soft` | 7.13 | 5.71 | 4.5 |
 
 Known and intentional exceptions:
 
-* `line` (1.25 light / 1.32 dark on surface) is **below** 3:1. It is a content
-  separator only; it is never the sole indicator of a control or a state. Use
-  `control` when it is.
-* `ink-faint` on `accent-soft` is 4.36 (light) / 4.44 (dark) — under AA. Use
-  `ink-muted` inside accent-soft fills.
+* `line` is **below** 3:1 against surface in both themes (2.7 / 2.2 for
+  `line-strong`; `line` itself is far lower). It is a content separator only;
+  it is never the sole indicator of a control or a state. Use `control` when
+  it is.
+* `ink-faint` is **not rated** on `accent-soft`. Use `ink-muted` inside
+  accent-soft fills — it is measured above and passes in both themes.
 
 Re-measure after any token edit; the two-line formula is in
 [WCAG 2.2 §Relative luminance](https://www.w3.org/TR/WCAG22/#dfn-relative-luminance).
@@ -84,12 +96,26 @@ Re-measure after any token edit; the two-line formula is in
 
 ## 4. Type
 
-Two ladders on one rhythm. Prose is system sans; **every artifact is
-monospace** — token tables, automata labels, ACTION/GOTO cells, TAC, x86-64.
+Two ladders on one rhythm. Prose is **Source Serif 4**; **every artifact is
+JetBrains Mono** — token tables, automata labels, ACTION/GOTO cells, TAC,
+x86-64. That contrast IS the hierarchy: a serif sentence explaining a monospace
+table needs no box drawn around it. Both faces are bundled
+(`@fontsource-variable/*`); the app must run with no network, so a CDN font link
+is never acceptable.
+
+Headings come from component classes, not from utilities, so the six routes
+cannot drift apart:
+
+| class | size | used for |
+| --- | --- | --- |
+| `.page-title` | 24–30 px | the route's opening statement. **Once per route.** |
+| `.state-title` | 22 px | an empty / blocked / error view's opening line |
+| `.section-title` | 17 px | a titled region (`.section-head` draws its rule) |
+| `.subsection-title` | 15 px | a pane inside a region |
+| `.group-label` | 11 px mono caps | caption over a cluster of controls |
 
 | utility | size | used for |
 | --- | --- | --- |
-| `text-lg` / `text-xl` | 18 / 20 px | page and section headings |
 | body (`<body>`) | 15 px / 1.55 | prose, step explanations |
 | `text-sm` | 14 px | secondary prose, control labels |
 | `text-code` | 13 px | mono listings: asm, TAC, source strips |
@@ -116,17 +142,26 @@ Two global rules make mono trustworthy for teaching:
 * **4 px rhythm.** Gaps and padding come from `gap-1 … gap-6` / `p-2 … p-5`.
   The 2 px half-steps (`gap-1.5`, `p-2.5`, `py-1.5`) are allowed inside dense
   chips and table rows and nowhere else.
-* **Section rhythm:** `gap-2` inside a card, `gap-4` between cards, `py-4`
-  page padding (`px-3`, `sm:px-5`).
+* **Section rhythm:** 2 rem between titled regions — that is `.section +
+  .section`, not a utility. `py-4` page padding (`px-3`, `sm:px-5`), identical
+  on all seven routes.
 * **Icon sizes:** `size-3.5` (14) inline with text, `size-4` (16) default,
   `size-5` (20) inside 44 px controls and page headings. No other sizes.
 * **Radius:** `rounded` (4) inside rows, `rounded-md` (6) on controls,
   `rounded-lg` (8) on cards and panels, `rounded-full` on chips and status pills.
-* **Elevation — exactly two levels.** Flat is `border border-line bg-surface`;
-  floating is `.overlay-panel` (tooltip, popover, select, dialog), which is the
-  *only* thing in the app that casts a shadow. A shadow therefore always means
-  "this floats above the page". In dark mode `.overlay-panel` also gets a
-  brighter edge, because a shadow on a near-black canvas conveys nothing.
+* **Elevation — exactly two levels.** Flat is the page itself: a `.section`
+  with a rule under its title and 2 rem to its neighbour. A border is *earned*,
+  not default — only `.framed` (a scrolling or genuinely contained artifact:
+  graphs, code listings, wide tables) and `.overlay-panel` (tooltip, popover,
+  select, dialog) may draw one, and `.overlay-panel` is the *only* thing in the
+  app that casts a shadow. A shadow therefore always means "this floats above
+  the page". In dark mode `.overlay-panel` also gets a brighter edge, because a
+  shadow on a near-black canvas conveys nothing.
+* **Active controls have one skin.** A tab row that shares a hairline marks its
+  selection with `border-b-2 border-accent` + `font-semibold`; a free-standing
+  chip cluster marks it with `bg-accent-soft` + `shadow-[inset_0_-2px_0_var(--accent)]`.
+  Both are weight **plus a rule**, so the selection survives greyscale. There is
+  no third treatment.
 
 ---
 

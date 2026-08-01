@@ -30,7 +30,7 @@ export function TopDownBlocked({
   const lr = ctx.leftRecursive;
   return (
     <EmptyState
-      title={`${grammarMeta(ctx.grammarId).label} is left recursive — no ${algorithm} can run on it`}
+      title={`Left recursive. No ${algorithm} can run on it.`}
       actions={
         <>
           <TextButton emphasis onClick={onGoToTransforms}>
@@ -40,17 +40,10 @@ export function TopDownBlocked({
       }
     >
       <p>
-        {lr.length} nonterminal{lr.length === 1 ? '' : 's'} derive themselves as their own leftmost
-        symbol ({lr.slice(0, 8).join(', ')}
-        {lr.length > 8 ? `, … +${lr.length - 8}` : ''}). A predictive parser would expand{' '}
-        <span className="font-mono">{lr[0]}</span> to a string beginning with{' '}
-        <span className="font-mono">{lr[0]}</span> forever without ever consuming a token — §4.3.3.
-      </p>
-      <p className="mt-2">
-        That is precisely the problem Algorithm 4.19 solves. Run the transform, then parse the
-        transformed grammar (<span className="font-mono">c-subset-ll</span> and{' '}
-        <span className="font-mono">dragon-4.28</span> are already in that form). Bottom-up parsers
-        have no such restriction — try LR parse instead.
+        {lr.length} nonterminal{lr.length === 1 ? '' : 's'} derive themselves leftmost (
+        {lr.slice(0, 8).join(', ')}
+        {lr.length > 8 ? `, +${lr.length - 8}` : ''}). Expanding{' '}
+        <span className="font-mono">{lr[0]}</span> never consumes a token (§4.3.3).
       </p>
     </EmptyState>
   );
@@ -66,8 +59,7 @@ export function NoParseInput({ ctx }: { ctx: ViewContext }) {
   if (meta.input === 'terminals') {
     return (
       <EmptyState title="Nothing to parse yet">
-        Type a sentence in the input box above — a whitespace-separated list of this grammar’s
-        terminals, e.g. <span className="font-mono">{meta.sample}</span>.
+        Type terminals above, e.g. <span className="font-mono">{meta.sample}</span>.
       </EmptyState>
     );
   }
@@ -89,8 +81,7 @@ export function NoParseInput({ ctx }: { ctx: ViewContext }) {
         </>
       }
     >
-      This view parses a real token stream, so it needs a compiled program: the scanner has to turn
-      the source into terminals before any parser can look at them.
+      This view parses a real token stream, so it needs a compiled program.
       {compilation === null ? '' : ' The last compile produced no tokens.'}
     </EmptyState>
   );
@@ -112,8 +103,7 @@ export function UpstreamFailure() {
       )}
       {syn.length > 0 && (
         <Note tone="warn" title="The pipeline parser reported syntax errors on this program">
-          The views below still run — a failed parse is a trace worth watching — but the AST the
-          rest of the compiler uses was not produced.
+          The views below still run. No AST was produced.
         </Note>
       )}
     </div>

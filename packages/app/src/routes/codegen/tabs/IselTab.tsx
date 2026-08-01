@@ -16,6 +16,7 @@ import type { TacFunction } from '@lab/core/ir/types.js';
 import type { Trace } from '@lab/trace';
 import { clsx } from 'clsx';
 import { ArrowRight, CornerDownRight } from 'lucide-react';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useCodegenTrace } from '../useCodegenTrace';
 import { prefixLatest } from '../traceScan';
 import {
@@ -114,7 +115,7 @@ function IselView({
         return (
           <>
             <AutoMicroSteps stepper={stepper} />
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="section flex flex-wrap items-center gap-x-6 gap-y-2">
               <FunctionPicker
                 names={names}
                 value={active}
@@ -122,131 +123,135 @@ function IselView({
                 onPick={setPinned}
                 onFollow={() => setPinned(null)}
               />
-              <Legend
-                items={[
-                  {
-                    swatch: <ArrowRight aria-hidden className="size-3.5 text-accent" />,
-                    label: 'quad being tiled',
-                  },
-                  { swatch: <Tag tone="accent">tile</Tag>, label: 'matched pattern' },
-                  {
-                    swatch: (
-                      <span
-                        aria-hidden
-                        className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-line-strong"
-                      />
-                    ),
-                    label: 'not tiled yet',
-                  },
-                ]}
-              />
             </div>
 
             <Panel
-              title="Quad → tile → x86-64 (AT&T)"
-              subtitle={
-                tacFn
-                  ? `${tacFn.quads.length} quads · ${vfn?.code.length ?? 0} instructions selected so far`
-                  : undefined
+              title="Quad → tile → x86-64"
+              // The key sits in the head of the artifact it explains, the same
+              // place every other view puts it.
+              actions={
+                <span className="flex flex-wrap items-center gap-x-4">
+                  <span className="section-meta">
+                    {tacFn
+                      ? `${tacFn.quads.length} quads · ${vfn?.code.length ?? 0} selected · AT&T`
+                      : 'AT&T'}
+                  </span>
+                  <Legend
+                    items={[
+                      {
+                        swatch: <ArrowRight aria-hidden className="size-3.5 text-accent" />,
+                        label: 'tiling',
+                      },
+                      { swatch: <Tag tone="accent">tile</Tag>, label: 'matched pattern' },
+                      {
+                        swatch: (
+                          <span
+                            aria-hidden
+                            className="inline-block h-2.5 w-4 rounded-sm border border-dashed border-line-strong"
+                          />
+                        ),
+                        label: 'pending',
+                      },
+                    ]}
+                  />
+                </span>
               }
-              bodyClassName="p-0"
+              frame
+              bodyClassName="max-h-[34rem]"
+              fullscreen={{
+                label: 'the selection listing',
+                controls: <FullscreenTransport stepper={stepper} />,
+              }}
             >
-              <div className="max-h-[34rem] overflow-auto">
-                <table className="w-full border-collapse font-mono text-xs">
-                  <thead className="sticky top-0 z-10 bg-raised text-[11px] text-ink-muted">
-                    <tr>
-                      <th scope="col" className="w-12 px-2 py-1.5 text-right font-semibold">
-                        #
-                      </th>
-                      <th scope="col" className="px-2 py-1.5 text-left font-semibold">
-                        three-address code
-                      </th>
-                      <th scope="col" className="px-2 py-1.5 text-left font-semibold">
-                        selected x86-64
-                      </th>
+              <table className="w-full border-collapse font-mono type-code">
+                <thead className="sticky top-0 z-10 bg-surface text-2xs tracking-wide text-ink-faint uppercase">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="w-12 border-b border-line px-2 py-2 text-right font-medium"
+                    >
+                      #
+                    </th>
+                    <th scope="col" className="border-b border-line px-2 py-2 text-left font-medium">
+                      three-address code
+                    </th>
+                    <th scope="col" className="border-b border-line px-2 py-2 text-left font-medium">
+                      selected x86-64
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {preamble.length > 0 && (
+                    <tr className="border-b border-line/60 align-top">
+                      <td className="px-2 py-1.5 text-right text-ink-faint">—</td>
+                      <td className="px-2 py-1.5 font-sans text-sm text-ink-muted italic">
+                        procedure entry
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <InstrList instrs={preamble} />
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {preamble.length > 0 && (
-                      <tr className="border-b border-line/60 align-top">
-                        <td className="px-2 py-1.5 text-right text-ink-faint">—</td>
-                        <td className="px-2 py-1.5 text-ink-muted italic">
-                          procedure entry (lab calling convention)
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <InstrList instrs={preamble} />
-                        </td>
-                      </tr>
-                    )}
-                    {(tacFn?.quads ?? []).map((q) => {
-                      const instrs = byQuad.get(q.index) ?? [];
-                      const isCurrent = currentTile?.tacIndex === q.index;
-                      const reached = instrs.length > 0 || isCurrent;
-                      return (
-                        <tr
-                          key={q.index}
-                          aria-current={isCurrent ? 'step' : undefined}
+                  )}
+                  {(tacFn?.quads ?? []).map((q) => {
+                    const instrs = byQuad.get(q.index) ?? [];
+                    const isCurrent = currentTile?.tacIndex === q.index;
+                    const reached = instrs.length > 0 || isCurrent;
+                    return (
+                      <tr
+                        key={q.index}
+                        aria-current={isCurrent ? 'step' : undefined}
+                        className={clsx(
+                          'border-b border-line/60 align-top',
+                          isCurrent && 'bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]',
+                        )}
+                      >
+                        <td
                           className={clsx(
-                            'border-b border-line/60 align-top',
-                            isCurrent && 'bg-accent-soft',
+                            'px-2 py-1.5 text-right text-2xs tabular-nums',
+                            reached ? 'text-ink-muted' : 'text-ink-faint',
                           )}
                         >
-                          <td
-                            className={clsx(
-                              'px-2 py-1.5 text-right',
-                              reached ? 'text-ink-muted' : 'text-ink-faint',
-                            )}
-                          >
-                            {isCurrent && (
-                              <ArrowRight aria-hidden className="mr-1 inline size-3 text-accent" />
-                            )}
-                            {q.index}
-                          </td>
-                          <td
-                            className={clsx(
-                              'px-2 py-1.5',
-                              isCurrent && 'font-semibold text-ink',
-                              !isCurrent && reached && 'text-ink',
-                              !reached && 'text-ink-faint',
-                            )}
-                          >
-                            <span className="whitespace-pre">{formatQuad(q)}</span>
-                            {isCurrent && currentTile !== null && (
-                              <Tag tone="accent" className="ml-2">
-                                {currentTile.tileName}
-                              </Tag>
-                            )}
-                          </td>
-                          <td className="px-2 py-1.5">
-                            {instrs.length > 0 ? (
-                              <InstrList
-                                instrs={instrs}
-                                highlightLast={isCurrent && justEmitted}
-                              />
-                            ) : (
-                              <span className="text-ink-faint">
-                                {isCurrent ? 'matching…' : '·'}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          {isCurrent && (
+                            <ArrowRight aria-hidden className="mr-1 inline size-3 text-accent" />
+                          )}
+                          {q.index}
+                        </td>
+                        <td
+                          className={clsx(
+                            'px-2 py-1.5',
+                            isCurrent && 'font-semibold text-ink',
+                            !isCurrent && reached && 'text-ink',
+                            !reached && 'text-ink-faint',
+                          )}
+                        >
+                          <span className="whitespace-pre">{formatQuad(q)}</span>
+                          {isCurrent && currentTile !== null && (
+                            <Tag tone="accent" className="ml-2">
+                              {currentTile.tileName}
+                            </Tag>
+                          )}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          {instrs.length > 0 ? (
+                            <InstrList instrs={instrs} highlightLast={isCurrent && justEmitted} />
+                          ) : (
+                            <span className="text-ink-faint">{isCurrent ? 'matching…' : '·'}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </Panel>
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="cg-row mt-8 grid gap-8 md:grid-cols-2">
               <FramePanel slots={vfn?.frame.slots ?? []} size={vfn?.frame.size ?? 0} />
-              <Panel title="Statically allocated" bodyClassName="p-3">
+              <Panel title="Statically allocated">
                 {state.globals.length === 0 && state.floatConsts.length === 0 ? (
-                  <p className="text-sm text-ink-faint">
-                    No globals and no pooled float constants in this program — everything lives in
-                    registers or the activation record.
-                  </p>
+                  <p className="prose-note">None.</p>
                 ) : (
-                  <ul className="flex flex-col gap-1 font-mono text-xs text-ink-muted">
+                  <ul className="flex flex-col gap-1 font-mono type-code text-ink-muted">
                     {state.globals.map((g) => (
                       <li key={g.name}>
                         <span className="text-ink">.comm {g.name}</span>, {g.size} bytes — addressed{' '}
@@ -264,7 +269,7 @@ function IselView({
             </div>
 
             {state.diagnostics.length > 0 && (
-              <Notice tone="warn" title="Instruction selection reported problems">
+              <Notice tone="warn" title="Selection diagnostics" className="mt-8">
                 <ul className="mt-1 list-disc pl-5 text-sm">
                   {state.diagnostics.map((d, i) => (
                     <li key={i}>{d.message}</li>
@@ -287,7 +292,7 @@ function InstrList({
   highlightLast?: boolean;
 }) {
   return (
-    <ul className="flex flex-col gap-0.5">
+    <ul className="flex flex-col">
       {instrs.map((instr, i) => {
         const last = highlightLast === true && i === instrs.length - 1;
         return (
@@ -308,27 +313,28 @@ function InstrList({
 }
 
 function FramePanel({ slots, size }: { slots: readonly FrameSlot[]; size: number }) {
+  // Per-slot reasons, as noun phrases in the row itself.
   const reasonLabel: Record<FrameSlot['reason'], string> = {
-    array: 'array — must be addressable',
-    'addr-taken': 'address taken (&x)',
+    array: 'array',
+    'addr-taken': 'address taken',
     spill: 'spill slot',
-    float: 'float value — SSE registers are not allocated',
+    float: 'float',
   };
   return (
-    <Panel title="Frame layout" subtitle={`${size} bytes below %rbp`} bodyClassName="p-3">
+    <Panel
+      title="Frame layout"
+      actions={<span className="section-meta">{size} bytes below %rbp</span>}
+    >
       {slots.length === 0 ? (
-        <p className="text-sm text-ink-faint">
-          Nothing needs a stack home: every value in this function can live in a register (§7.2
-          activation records).
-        </p>
+        <p className="prose-note">No stack slots.</p>
       ) : (
-        <ul className="flex flex-col gap-1 font-mono text-xs">
+        <ul className="flex flex-col gap-1 font-mono type-code">
           {slots.map((s) => (
             <li key={`${s.name}-${s.offset}`} className="flex flex-wrap items-center gap-2">
               <span className="text-ink">{s.offset}(%rbp)</span>
               <span className="text-ink-muted">{s.name}</span>
               <Tag tone={s.reason === 'spill' ? 'warn' : 'neutral'}>{s.size}B</Tag>
-              <span className="text-ink-faint">{reasonLabel[s.reason]}</span>
+              <span className="text-2xs text-ink-faint">{reasonLabel[s.reason]}</span>
             </li>
           ))}
         </ul>

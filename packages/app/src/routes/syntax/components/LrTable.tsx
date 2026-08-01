@@ -6,7 +6,7 @@
  * would otherwise walk 147 rows away. The "row being filled" strip below spells
  * the same row out in full, which the 56px-wide cells cannot.
  */
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { clsx } from 'clsx';
 import { Info, X } from 'lucide-react';
@@ -36,6 +36,12 @@ export interface LrTableProps {
   rowName: (state: number) => string;
   current: { state: number; symbol: string } | null;
   height?: number;
+  /**
+   * Transport for fullscreen. The ACTION/GOTO table is a STEPPED artifact —
+   * the current cell moves with the parse — so once it fills the screen it has
+   * to carry its own controls or it freezes on whatever cell it opened with.
+   */
+  controls?: ReactNode;
 }
 
 const T_PREFIX = 'a:';
@@ -51,6 +57,7 @@ export function LrTable({
   rowName,
   current,
   height = 460,
+  controls,
 }: LrTableProps) {
   const conflictAt = useMemo(() => {
     const m = new Map<string, LrConflictJson>();
@@ -118,12 +125,13 @@ export function LrTable({
         height={height}
         selectedRowId={current === null ? null : `row-${current.state}`}
         scrollToRowId={current === null ? null : `row-${current.state}`}
+        controls={controls}
       />
       <Legend
         items={[
-          { label: `ACTION columns: ${terminals.length} terminals (sN shift, rN reduce, acc accept)`, swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border border-line-strong bg-surface" /> },
-          { label: `GOTO columns: ${nonterminals.length} nonterminals`, swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border border-line-strong bg-raised" /> },
-          { label: 'conflict (hatched + ring)', swatch: <span aria-hidden className="cell-conflict inline-block h-3 w-4 rounded-sm" /> },
+          { label: `ACTION · ${terminals.length} terminals · sN rN acc`, swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border border-line-strong bg-surface" /> },
+          { label: `GOTO · ${nonterminals.length} nonterminals`, swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border border-line-strong bg-raised" /> },
+          { label: 'conflict', swatch: <span aria-hidden className="cell-conflict inline-block h-3 w-4 rounded-sm" /> },
         ]}
       />
     </div>
@@ -146,9 +154,7 @@ export function CurrentRowStrip({
 }) {
   if (state === null) {
     return (
-      <p className="text-xs text-ink-muted">
-        No row is being filled yet — step forward to start the table.
-      </p>
+      <p className="text-xs text-ink-muted">Step forward to fill a row.</p>
     );
   }
   const acts = Object.entries(action ?? {});
@@ -201,26 +207,26 @@ export function ConflictList({
   emptyLabel: string;
 }) {
   if (conflicts.length === 0) {
-    return <p className="text-xs leading-relaxed text-ink-muted">{emptyLabel}</p>;
+    return <p className="prose-note text-sm">{emptyLabel}</p>;
   }
   return (
-    <ul className="flex max-h-72 flex-col gap-1.5 overflow-auto">
+    <ul className="artifact-scroll flex max-h-72 flex-col gap-2">
       {conflicts.map((c, i) => (
         <li
           key={`${c.state}-${c.symbol}-${i}`}
           className={clsx(
-            'flex flex-wrap items-center gap-2 rounded-md border px-2 py-1.5',
-            c.resolution ? 'border-warn/50 bg-warn-soft' : 'border-err/50 bg-err-soft',
+            'flex flex-wrap items-center gap-2 border-l-2 py-1 pl-2.5',
+            c.resolution ? 'border-warn' : 'border-err',
           )}
         >
           <span aria-hidden className="cell-conflict size-3 shrink-0 rounded-sm" />
-          <span className="font-mono text-[11px] text-ink">
+          <span className="font-mono text-2xs text-ink">
             state {c.state} · ‘{c.symbol}’
           </span>
           <span
             className={clsx(
-              'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
-              c.resolution ? 'bg-warn/20 text-warn' : 'bg-err/20 text-err',
+              'font-mono text-3xs font-semibold',
+              c.resolution ? 'text-warn' : 'text-err',
             )}
           >
             {c.kind}
@@ -232,7 +238,7 @@ export function ConflictList({
               type="button"
               aria-label={`Jump to the ${c.kind} conflict in state ${c.state} on ${c.symbol}`}
               onClick={() => onSelect(c)}
-              className="h-7 cursor-pointer rounded border border-control bg-surface px-2 text-[11px] text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+              className="h-7 cursor-pointer rounded-sm px-2 text-2xs text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent"
             >
               go to step
             </button>
@@ -261,7 +267,7 @@ function ConflictPopover({ ag, conflict }: { ag: Grammar; conflict: LrConflictJs
           side="left"
           sideOffset={6}
           collisionPadding={8}
-          className="z-50 w-80 rounded-md border border-line bg-surface p-3 text-sm leading-relaxed text-ink shadow-lg"
+          className="overlay-panel z-50 w-80 rounded-md p-3 text-sm leading-relaxed text-ink"
         >
           <div className="mb-1 flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">
@@ -295,9 +301,7 @@ function ConflictPopover({ ag, conflict }: { ag: Grammar; conflict: LrConflictJs
             </p>
           ) : (
             <p className="mt-2 text-xs text-ink-muted">
-              Both items demand the same cell on ‘{conflict.symbol}’, so one lookahead symbol is
-              not enough to decide this state. Left unresolved, the first-registered action wins
-              and the other is unreachable.
+              Both items claim this cell. Unresolved, the first-registered action wins.
             </p>
           )}
           <p className="mt-2 text-[11px] text-ink-faint">

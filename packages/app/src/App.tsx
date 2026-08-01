@@ -16,7 +16,7 @@ const CodegenRoute = lazy(() => import('./routes/codegen'));
 
 function RouteFallback() {
   return (
-    <div className="flex flex-1 items-center justify-center gap-2 py-24 text-sm text-ink-faint">
+    <div className="prose-note flex flex-1 items-center justify-center gap-2 py-24 text-ink-faint">
       <Loader2 aria-hidden className="size-4 animate-spin" />
       Loading phase…
     </div>

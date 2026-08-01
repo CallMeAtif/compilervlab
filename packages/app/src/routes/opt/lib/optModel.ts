@@ -89,7 +89,7 @@ export const PASS_META: Record<PassId, PassMeta> = {
     blurb:
       'Statements whose operands do not change inside a natural loop are moved to a freshly created preheader — but only after the three code-motion legality conditions are checked.',
     analysis: 'loops',
-    analysisLabel: 'Dominators · natural loops · reaching definitions · live variables',
+    analysisLabel: 'Dominators · loops · liveness',
   },
   dce: {
     id: 'dce',

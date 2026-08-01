@@ -20,17 +20,17 @@ export function CompileCta({ className }: { className?: string }) {
         type="button"
         onClick={() => void compile()}
         disabled={compiling}
-        className="flex h-11 cursor-pointer items-center gap-2 rounded-md border border-accent bg-accent px-4 text-sm font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-11 cursor-pointer items-center gap-2 rounded-sm bg-accent px-4 text-sm font-semibold text-on-accent transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
       >
         <PlayCircle aria-hidden className="size-4.5" />
         {compiling ? 'Compiling…' : 'Compile'}
       </button>
-      <p className="text-xs text-ink-faint">
-        Or open the{' '}
+      <p className="text-sm text-ink-faint">
+        Or pick another example on the{' '}
         <Link to="/" className="underline underline-offset-2">
           overview
-        </Link>{' '}
-        to pick a different example first.
+        </Link>
+        .
       </p>
     </div>
   );

@@ -12,6 +12,7 @@ import { formatDotted } from '@lab/core/grammar/lr-events.js';
 import { lr0Reducer, type Lr0Event, type Lr0UiState } from '@lab/core/grammar/lr0-items.js';
 import { lr1Reducer, type Lr1Event, type Lr1UiState } from '@lab/core/grammar/lr1-items.js';
 import { useStepper, type Stepper } from '../../../lib/useStepper';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useTrace } from '../lib/useTrace';
 import type { ViewContext } from '../lib/view';
 import { LR1_VIEWS, type Lr1View as Lr1SubView } from '../lib/algorithms';
@@ -100,7 +101,6 @@ function Lr0Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<Lr0UiState, L
       ctx={ctx}
       stepper={stepper}
       title="Canonical LR(0) collection"
-      subtitle="§4.6.2 · Algorithm 4.32 (Fig 4.31)"
       final={final}
       now={now}
       currentStateId={currentStateId}
@@ -115,7 +115,6 @@ function Lr0Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<Lr0UiState, L
           pred: (s) => s.event.kind === 'lr0/goto' && !s.event.isNew,
         },
       ]}
-      explainer="An LR(0) item is a production with a dot: [A → α · β] means α is on the stack and β is still expected. A state is a set of items closed under CLOSURE, and GOTO(I, X) advances every dot that stands before X. No lookahead is recorded — that is what SLR must patch up with FOLLOW sets."
     />
   );
 }
@@ -199,7 +198,6 @@ function Lr1Ready({
       ctx={ctx}
       stepper={stepper}
       title="Canonical LR(1) collection"
-      subtitle="§4.7.2 · Algorithm 4.53 (Fig 4.41)"
       headerActions={switcher}
       final={final}
       now={now}
@@ -212,7 +210,6 @@ function Lr1Ready({
         { label: 'next GOTO', pred: (s) => s.event.kind === 'lr1/goto' },
         { label: 'truncation', pred: (s) => s.event.kind === 'lr1/truncated' },
       ]}
-      explainer="Each LR(1) item carries the lookahead that may follow the reduction it is heading for, so the same LR(0) core is split into as many states as it has viable lookahead contexts. That is what makes canonical LR(1) strictly more powerful than SLR — and what makes it explode."
       banner={
         final.truncated ? (
           <Note
@@ -224,12 +221,7 @@ function Lr1Ready({
               </TextButton>
             }
           >
-            The lab caps the canonical collection at 400 states. Splitting every LR(0) state by its
-            viable lookahead contexts multiplies the state count; for a real language grammar the
-            canonical LR(1) table is thousands of states, which is why no generator builds it.
-            LALR(1) (§4.7.4) merges the states that share a core back together and gets almost the
-            same power for the size of the LR(0) machine. Everything shown below is exact up to the
-            cap — beyond it the collection is simply not built.
+            The cap is 400 states. Everything below it is exact.
           </Note>
         ) : null
       }
@@ -243,7 +235,6 @@ function Collection<S, E extends { kind: string }>({
   ctx,
   stepper,
   title,
-  subtitle,
   headerActions,
   final,
   now,
@@ -252,13 +243,11 @@ function Collection<S, E extends { kind: string }>({
   added,
   justifies,
   jumps,
-  explainer,
   banner,
 }: {
   ctx: ViewContext;
   stepper: Stepper<S, E>;
   title: string;
-  subtitle: string;
   headerActions?: ReactNode;
   final: Snapshot;
   now: Snapshot;
@@ -267,7 +256,6 @@ function Collection<S, E extends { kind: string }>({
   added: ItemMark | null;
   justifies: ItemMark | null;
   jumps: ReadonlyArray<{ label: string; pred: (s: StepRecord<E>) => boolean }>;
-  explainer: string;
   banner?: ReactNode;
 }) {
   const ag = ctx.augmented;
@@ -310,15 +298,15 @@ function Collection<S, E extends { kind: string }>({
       }
       main={
         <>
-          {banner}
-          <Panel title={title} subtitle={subtitle} actions={headerActions} bodyClassName="flex flex-col gap-3">
-            <p className="text-xs leading-relaxed text-ink-muted">{explainer}</p>
+          {banner && <div className="mb-7">{banner}</div>}
+          <Panel title={title} actions={headerActions}>
             <GotoGraph
               states={graphStates}
               transitions={final.transitions}
               currentStateId={currentStateId}
               visitedStateIds={visited}
               currentEdge={currentEdge}
+              controls={<FullscreenTransport stepper={stepper} />}
             />
           </Panel>
         </>
@@ -327,13 +315,19 @@ function Collection<S, E extends { kind: string }>({
         <StepPanel stepper={stepper} jumps={jumps}>
           <Panel
             title="Item sets"
-            subtitle={`${now.states.length} / ${final.states.length} built`}
-            bodyClassName="flex flex-col gap-2"
+            subtitle={
+              <>
+                <Stat label="states" value={`${now.states.length} / ${final.states.length}`} />
+                <span className="ml-3">
+                  <Stat
+                    label="edges"
+                    value={`${now.transitions.length} / ${final.transitions.length}`}
+                  />
+                </span>
+              </>
+            }
+            bodyClassName="flex flex-col gap-3"
           >
-            <div className="flex flex-wrap gap-1.5">
-              <Stat label="states" value={`${now.states.length} / ${final.states.length}`} />
-              <Stat label="transitions" value={`${now.transitions.length} / ${final.transitions.length}`} />
-            </div>
             <ItemSets
               states={itemSets}
               currentStateId={currentStateId}

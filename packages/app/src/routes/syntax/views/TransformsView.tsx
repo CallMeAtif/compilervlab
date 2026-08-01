@@ -110,32 +110,26 @@ function Ready({
       }
       main={
         <>
-          <Panel
-            title="Transform"
-            subtitle={
-              stage === 'eliminate-left-recursion'
-                ? '§4.3.3 · Algorithm 4.19 — runs on the raw grammar'
-                : '§4.3.4 · Algorithm 4.21 — runs on the left-recursion-eliminated grammar'
-            }
-            bodyClassName="flex flex-col gap-2"
-          >
+          {/* The stage picker is a control, not a region: it needs no title and
+              no paragraph restating the algorithm the citation names. */}
+          <div className="mb-7 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Segmented
               label="Transform stage"
               value={stage}
               options={TRANSFORM_STAGES}
               onChange={onStage}
             />
-            <p className="text-xs leading-relaxed text-ink-muted">
+            <span className="section-meta">
               {stage === 'eliminate-left-recursion'
-                ? 'For A₁ … Aₙ in declaration order: substitute earlier nonterminals out of the leading position, then replace A → A α | β by A → β A′ and A′ → α A′ | ε. Left recursion becomes right recursion, which a top-down parser can handle.'
-                : 'While two alternatives of A share a prefix α, replace them by A → α A′ and let A′ carry the differing suffixes. The parser can then defer the choice until it has seen α.'}
-            </p>
-          </Panel>
+                ? '§4.3.3 · Algorithm 4.19'
+                : '§4.3.4 · Algorithm 4.21'}
+            </span>
+          </div>
 
           <Panel
             title="Productions"
             subtitle={`${before.productions.length} → ${after.productions.length}`}
-            bodyClassName="flex flex-col gap-2 p-2"
+            bodyClassName="flex flex-col gap-3"
           >
             <DiffView
               rows={rows}
@@ -146,9 +140,9 @@ function Ready({
             />
             <Legend
               items={[
-                { label: '+ introduced by the transform', swatch: <span aria-hidden className="font-mono text-ok">+</span> },
-                { label: '− rewritten away', swatch: <span aria-hidden className="font-mono text-err">−</span> },
-                { label: '· untouched', swatch: <span aria-hidden className="font-mono text-ink-faint">·</span> },
+                { label: 'added', swatch: <span aria-hidden className="font-mono text-ok">+</span> },
+                { label: 'rewritten away', swatch: <span aria-hidden className="font-mono text-err">−</span> },
+                { label: 'untouched', swatch: <span aria-hidden className="font-mono text-ink-faint">·</span> },
               ]}
             />
           </Panel>
@@ -168,18 +162,13 @@ function Ready({
             },
           ]}
         >
-          <Panel title="Introduced symbols" bodyClassName="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-1.5">
+          <Panel title="Introduced symbols" bodyClassName="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1">
               <Stat label="new nonterminals" value={primes.length} />
               <Stat label="productions" value={after.productions.length} />
             </div>
             {primes.length === 0 ? (
-              <p className="text-xs leading-relaxed text-ink-muted">
-                No primed symbol has been introduced yet.
-                {stage === 'eliminate-left-recursion'
-                  ? ' One appears the first time an immediately left-recursive nonterminal is rewritten.'
-                  : ' One appears the first time two alternatives are found to share a prefix.'}
-              </p>
+              <p className="prose-note text-sm">None yet.</p>
             ) : (
               <ul className="flex flex-wrap gap-1.5">
                 {primes.map((p) => (
@@ -203,8 +192,7 @@ function Ready({
             )}
             {ev && ev.kind === 'lf.factor' && (
               <Note tone="info" title={`Common prefix: ${symbols(ev.prefix)}`}>
-                {ev.group.length} alternatives of {ev.nonterminal} start with it, so the choice is
-                deferred into {ev.prime}.
+                {ev.group.length} alternatives of {ev.nonterminal}; the choice moves to {ev.prime}.
               </Note>
             )}
             {ev && ev.kind === 'lr.immediate' && (

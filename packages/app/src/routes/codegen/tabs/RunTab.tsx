@@ -130,126 +130,138 @@ function RunView({
             <AutoMicroSteps stepper={stepper} />
             <ResultCard state={state} atEnd={stepper.atEnd} />
 
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div className="cg-row mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
               <Panel
                 title="Program counter"
-                subtitle={
-                  heatmapEnabled
-                    ? 'the emitted listing; the bar shows how often each line has run'
-                    : 'the emitted listing'
+                actions={
+                  <span className="section-meta">
+                    {lines.length} lines{heatmapEnabled ? ' · ×n = runs' : ''}
+                  </span>
                 }
-                bodyClassName="p-0"
+                frame
+                bodyClassName="max-h-[34rem] bg-code"
               >
-                <div className="max-h-[34rem] overflow-auto">
-                  <ul className="font-mono text-xs">
-                    {lines.map((l) => {
-                      const n = counts.get(l.index) ?? 0;
-                      const isPc = l.index === pc;
-                      return (
-                        <li
-                          key={l.index}
-                          aria-current={isPc ? 'step' : undefined}
+                {/* `w-max min-w-full`: a long directive widens the FIGURE and the
+                    frame scrolls, instead of running off the edge of its row.
+                    The execution counts therefore live in the LEFT gutter, next
+                    to the line numbers, where they stay visible unscrolled —
+                    the usual place a profiler puts them. */}
+                <ul className="w-max min-w-full py-1 font-mono type-code">
+                  {lines.map((l) => {
+                    const n = counts.get(l.index) ?? 0;
+                    const isPc = l.index === pc;
+                    return (
+                      <li
+                        key={l.index}
+                        aria-current={isPc ? 'step' : undefined}
+                        className={clsx(
+                          'flex items-center gap-2 py-0.5 pr-3',
+                          isPc && 'bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]',
+                        )}
+                      >
+                        <span aria-hidden className="w-3 shrink-0 pl-1 text-accent">
+                          {isPc ? '▸' : ''}
+                        </span>
+                        <span className="w-8 shrink-0 text-right text-2xs text-ink-faint tabular-nums">
+                          {l.index}
+                        </span>
+                        {heatmapEnabled && (
+                          <span
+                            className="flex w-16 shrink-0 items-center justify-end gap-1 border-r border-line pr-2"
+                            title={n > 0 ? `executed ${n} time(s)` : undefined}
+                          >
+                            {n > 0 && (
+                              <>
+                                <span
+                                  aria-hidden
+                                  className="block h-1.5 rounded-full bg-accent"
+                                  style={{ width: `${Math.max(3, (n / maxCount) * 26)}px` }}
+                                />
+                                <span className="w-6 text-right text-2xs text-ink-faint tabular-nums">
+                                  ×{n}
+                                </span>
+                              </>
+                            )}
+                          </span>
+                        )}
+                        {!heatmapEnabled && (
+                          <span aria-hidden className="h-4 shrink-0 border-r border-line" />
+                        )}
+                        <span
                           className={clsx(
-                            'flex items-center gap-2 px-2 py-1',
-                            isPc && 'bg-accent-soft',
+                            'min-w-0 flex-1 pl-1 whitespace-pre',
+                            l.kind === 'directive' && 'text-ink-faint',
+                            l.kind === 'label' && 'font-semibold text-ink',
+                            l.kind === 'instr' && (n > 0 ? 'text-ink' : 'text-ink-muted'),
+                            isPc && 'font-semibold',
                           )}
                         >
-                          <span className="w-4 shrink-0 text-accent">
-                            {isPc ? '▸' : ''}
-                          </span>
-                          <span className="w-8 shrink-0 text-right text-[10px] text-ink-faint">
-                            {l.index}
-                          </span>
-                          <span
-                            className={clsx(
-                              'min-w-0 flex-1 whitespace-pre',
-                              l.kind === 'directive' && 'text-ink-faint',
-                              l.kind === 'label' && 'font-semibold text-ink',
-                              l.kind === 'instr' && (n > 0 ? 'text-ink' : 'text-ink-muted'),
-                              isPc && 'font-semibold',
-                            )}
-                          >
-                            {l.kind === 'instr' ? `    ${l.text}` : l.text}
-                          </span>
-                          {heatmapEnabled && n > 0 && (
-                            <span className="flex shrink-0 items-center gap-1">
-                              <span
-                                aria-hidden
-                                className="block h-1.5 rounded-full bg-accent"
-                                style={{ width: `${Math.max(4, (n / maxCount) * 44)}px` }}
-                              />
-                              <span className="w-6 text-right text-[10px] text-ink-faint">
-                                ×{n}
-                              </span>
-                            </span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
+                          {l.kind === 'instr' ? `    ${l.text}` : l.text}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               </Panel>
 
-              <div className="flex min-w-0 flex-col gap-3">
-                <Panel title="Machine" bodyClassName="p-3">
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <dt className="text-xs text-ink-faint">instructions executed</dt>
-                    <dd className="font-mono text-ink">{state.steps.toLocaleString()}</dd>
-                    <dt className="text-xs text-ink-faint">call depth</dt>
-                    <dd className="font-mono text-ink">{heatmapEnabled ? depth : '—'}</dd>
-                    <dt className="text-xs text-ink-faint">pc</dt>
-                    <dd className="font-mono text-ink">{pc ?? '—'}</dd>
-                    <dt className="text-xs text-ink-faint">current function</dt>
-                    <dd className="font-mono text-ink">{currentFn ?? '—'}</dd>
+              <div className="flex min-w-0 flex-col">
+                <Panel title="Machine">
+                  <dl className="flex flex-col">
+                    {(
+                      [
+                        ['instructions executed', state.steps.toLocaleString()],
+                        ['call depth', heatmapEnabled ? String(depth) : '—'],
+                        ['pc', pc === null ? '—' : String(pc)],
+                        ['current function', currentFn ?? '—'],
+                      ] as const
+                    ).map(([term, value]) => (
+                      <div
+                        key={term}
+                        className="flex items-baseline justify-between gap-4 border-b border-line/60 py-1.5 last:border-b-0"
+                      >
+                        <dt className="text-sm text-ink-muted">{term}</dt>
+                        <dd className="font-mono type-code text-ink tabular-nums">{value}</dd>
+                      </div>
+                    ))}
                   </dl>
-                  <p className="mt-3 border-t border-line pt-2 text-xs text-ink-faint">
-                    The oracle trace records the program counter, the instruction and the step
-                    count — not a snapshot of every register and stack cell — so this view shows
-                    control state and the allocator's register map rather than invented values.
-                    The return value below is recorded, and is the value the TAC interpreter must
-                    agree with.
-                  </p>
                 </Panel>
 
                 <Panel
                   title="Register map"
-                  subtitle={
-                    currentFn !== null
-                      ? `which value the allocator put in each register in '${currentFn}'`
-                      : 'select a function by stepping into it'
+                  actions={
+                    <span className="section-meta">{currentFn ? `${currentFn}()` : 'no frame'}</span>
                   }
-                  bodyClassName="p-3"
                 >
-                  <ul className="flex flex-wrap gap-2 font-mono text-xs">
+                  <ul className="flex flex-wrap gap-1.5 font-mono text-xs">
                     {GP_REGISTERS.map((r) => {
                       const held = regs?.get(r);
                       return (
                         <li
                           key={r}
                           className={clsx(
-                            'flex min-w-24 flex-col rounded-md border px-2 py-1',
+                            'flex min-w-24 flex-col rounded-sm border px-2 py-1',
                             held !== undefined
                               ? 'border-line-strong bg-raised text-ink'
                               : 'border-dashed border-line text-ink-faint',
                           )}
                         >
                           <span className="font-semibold">{r}</span>
-                          <span className="text-[10px]">{held ?? 'unused'}</span>
+                          <span className="text-3xs">{held ?? 'unused'}</span>
                         </li>
                       );
                     })}
-                    <li className="flex min-w-24 flex-col rounded-md border border-line px-2 py-1 text-ink-muted">
+                    <li className="flex min-w-24 flex-col rounded-sm border border-line px-2 py-1 text-ink-muted">
                       <span className="font-semibold">%rax</span>
-                      <span className="text-[10px]">return value / division</span>
+                      <span className="text-3xs">return value / division</span>
                     </li>
                   </ul>
                 </Panel>
 
-                <Panel title="Recent instructions" bodyClassName="p-0">
-                  <ol className="max-h-56 overflow-auto font-mono text-xs">
+                <Panel title="Recent instructions" frame bodyClassName="max-h-56">
+                  <ol className="font-mono type-code">
                     {recent.length === 0 && (
-                      <li className="px-3 py-4 text-ink-faint">
-                        Nothing executed yet — press play to run the program.
+                      <li className="px-3 py-4 font-sans text-sm text-ink-faint">
+                        Press play to run.
                       </li>
                     )}
                     {recent.map((t, i) => (
@@ -257,13 +269,13 @@ function RunView({
                         key={`${t.step}-${t.pc}`}
                         className={clsx(
                           'flex items-center gap-2 border-b border-line/50 px-2 py-1',
-                          i === 0 ? 'text-ink' : 'text-ink-muted',
+                          i === 0 ? 'font-semibold text-ink' : 'text-ink-muted',
                         )}
                       >
-                        <span className="w-10 shrink-0 text-right text-[10px] text-ink-faint">
+                        <span className="w-10 shrink-0 text-right text-2xs text-ink-faint tabular-nums">
                           {t.step}
                         </span>
-                        <span className="w-8 shrink-0 text-right text-[10px] text-ink-faint">
+                        <span className="w-8 shrink-0 text-right text-2xs text-ink-faint tabular-nums">
                           @{t.pc}
                         </span>
                         <span className="min-w-0 flex-1 truncate">{t.text}</span>
@@ -275,13 +287,11 @@ function RunView({
             </div>
 
             {!heatmapEnabled && (
-              <Notice tone="info" title="Long run — per-line counts disabled">
-                <p className="text-sm">
-                  This program executes more than {HEATMAP_STEP_CAP.toLocaleString()} recorded
-                  steps, so the execution-count bars and the recent-instruction tape are turned
-                  off to keep stepping responsive.
-                </p>
-              </Notice>
+              <Notice
+                tone="info"
+                title={`Over ${HEATMAP_STEP_CAP.toLocaleString()} steps: per-line counts off.`}
+                className="mt-8"
+              />
             )}
           </>
         );
@@ -293,7 +303,7 @@ function RunView({
 function ResultCard({ state, atEnd }: { state: AsmExecState; atEnd: boolean }) {
   if (state.halted && state.error !== null) {
     return (
-      <Notice tone="error" title="The emitted program stopped with a runtime error">
+      <Notice tone="error" title="Runtime error">
         <p className="text-sm">
           {state.error} — after {state.steps.toLocaleString()} instruction(s).
         </p>
@@ -304,46 +314,40 @@ function ResultCard({ state, atEnd }: { state: AsmExecState; atEnd: boolean }) {
     return (
       <section
         aria-label="Execution result"
-        className="flex flex-wrap items-center gap-4 rounded-lg border border-ok/40 bg-ok-soft px-4 py-3"
+        // The payoff of the whole phase: a headline, set in type — with a
+        // double rule under the value so it survives greyscale.
+        className="section flex flex-wrap items-baseline gap-x-4 gap-y-1 border-l-2 border-l-ok pl-4"
       >
-        <CircleCheck aria-hidden className="size-6 shrink-0 text-ok" />
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-ok">
-            main returned{' '}
-            <span className="font-mono text-lg">{state.returnValue ?? '—'}</span>
-          </p>
-          <p className="text-xs text-ok/90">
-            {state.steps.toLocaleString()} instruction(s) executed. The generated code and the TAC
-            interpreter must produce this same value — that agreement is the lab's end-to-end
-            correctness oracle.
-          </p>
-        </div>
+        <CircleCheck aria-hidden className="size-5 shrink-0 translate-y-1 text-ok" />
+        <p className="state-title">
+          main returned{' '}
+          <span className="font-mono text-ok underline decoration-double decoration-ok/60 underline-offset-4">
+            {state.returnValue ?? '—'}
+          </span>
+        </p>
+        <p className="prose-note w-full">
+          {state.steps.toLocaleString()} instructions executed.
+        </p>
       </section>
     );
   }
   return (
     <section
       aria-label="Execution result"
-      className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-surface px-4 py-3"
+      className="section flex flex-wrap items-baseline gap-x-4 gap-y-1 border-l-2 border-l-line-strong pl-4"
     >
       {atEnd ? (
-        <OctagonAlert aria-hidden className="size-6 shrink-0 text-warn" />
+        <OctagonAlert aria-hidden className="size-5 shrink-0 translate-y-1 text-warn" />
       ) : state.steps > 0 ? (
-        <Cpu aria-hidden className="size-6 shrink-0 text-accent" />
+        <Cpu aria-hidden className="size-5 shrink-0 translate-y-1 text-accent" />
       ) : (
-        <Flag aria-hidden className="size-6 shrink-0 text-ink-faint" />
+        <Flag aria-hidden className="size-5 shrink-0 translate-y-1 text-ink-faint" />
       )}
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-ink">
-          {state.steps === 0 ? 'Ready to run' : `Running — ${state.steps} instruction(s) so far`}
-        </p>
-        <p className="text-xs text-ink-muted">
-          Execution starts at <span className="font-mono">main</span> with a sentinel return
-          address on the stack; it ends when control returns from it.
-        </p>
-      </div>
+      <h2 className="state-title">
+        {state.steps === 0 ? 'Ready to run' : `Running · ${state.steps} instructions`}
+      </h2>
       {state.steps > 0 && !state.halted && (
-        <Tag tone="neutral" className="ml-auto">
+        <Tag tone="neutral">
           <CircleSlash aria-hidden className="size-2.5" />
           not halted
         </Tag>

@@ -29,14 +29,14 @@ test.describe('deep links', () => {
     await expectPageAlive(page);
     await waitForTrace(page, 20);
 
-    // The algorithm: the phase header tab and the construction-stage chain
-    // (marked with aria-current="step") must both point at subset construction.
+    // The algorithm. /lex used to draw a second, numbered stage chain under the
+    // header tablist saying the same thing one band lower; it was deleted, so
+    // the phase header tab is now the single selector for the stage.
     await expect(
       page.getByRole('tab', { name: 'Subset construction', exact: true }),
     ).toHaveAttribute('aria-selected', 'true');
-    await expect(
-      page.getByRole('button', { name: /Subset construction/ }).first(),
-    ).toHaveAttribute('aria-current', 'step');
+    // The stage really is showing: the §3.7.1 worker table is on screen.
+    await expect(page.getByRole('heading', { name: 'Dstates / Dtran' })).toBeVisible();
     // The phase-specific param: which token class is being constructed.
     await expect(page.getByRole('radio', { name: /intconst/ })).toHaveAttribute(
       'aria-checked',

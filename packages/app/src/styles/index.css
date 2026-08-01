@@ -1,4 +1,8 @@
 @import 'tailwindcss';
+/* Bundled, not fetched: the app must run with no network (PLAN.md). */
+@import '@fontsource-variable/source-serif-4';
+@import '@fontsource-variable/source-serif-4/opsz-italic.css';
+@import '@fontsource-variable/jetbrains-mono';
 @import './theme.css';
 
 /* Dark mode = class strategy on <html> (lib/theme.tsx toggles it). */
@@ -29,11 +33,20 @@
   --color-on-warn: var(--on-warn);
   --color-code: var(--code-bg);
 
+  /*
+   * TYPE. An editorial pairing, both bundled (no CDN — PLAN.md keeps the app
+   * fully self-contained): Source Serif 4 sets prose and headings the way a
+   * textbook would, JetBrains Mono sets every artifact. The contrast between
+   * the two IS the hierarchy — a serif sentence explaining a monospace table
+   * needs no box drawn around it.
+   */
+  --font-serif:
+    'Source Serif 4 Variable', 'Source Serif 4', ui-serif, Georgia, Cambria, serif;
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+    'Source Serif 4 Variable', 'Source Serif 4', ui-serif, Georgia, Cambria, serif;
   --font-mono:
-    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular,
+    Menlo, Consolas, monospace;
 
   /*
    * TYPE SCALE. Two ladders that share a baseline rhythm.
@@ -127,8 +140,143 @@
 
 @layer components {
   /*
+   * ── EDITORIAL STRUCTURE ───────────────────────────────────────────────────
+   * A textbook does not draw a box around every paragraph, and neither does
+   * this app. Content is grouped by a RULE and by WHITESPACE; a border is
+   * reserved for things that genuinely need containing (a scrolling artifact,
+   * a floating overlay). The page is one sheet of paper.
+   *
+   *   .section        a titled region. Rule above its heading, air below it.
+   *                   Replaces `rounded-lg border border-line bg-surface p-4`.
+   *   .section-head   the heading row: serif title + mono metadata, baseline
+   *                   aligned, hairline under.
+   *   .section-title  the title itself — serif, the only place size carries
+   *                   hierarchy.
+   *   .framed         opt-in border, for artifacts that scroll or must be
+   *                   visually contained (graphs, code listings).
+   *   .rule           a standalone hairline separator.
+   */
+  .section {
+    display: flow-root;
+    margin-block: 0;
+  }
+
+  .section + .section {
+    margin-block-start: 2rem;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding-block-end: 0.5rem;
+    border-block-end: 1px solid var(--line);
+    margin-block-end: 0.875rem;
+  }
+
+  .section-title {
+    font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  /*
+   * The tier BELOW a section title: a pane inside a region ("Inserted
+   * conversions", "Open lists", "Construct being translated"). Same serif
+   * voice, one step down, hairline under — so a sub-pane can never be mistaken
+   * for a region, and the six routes all draw this tier the same way.
+   */
+  .subsection-title {
+    font-family: var(--font-serif);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--ink);
+    padding-block-end: 0.25rem;
+    border-block-end: 1px solid var(--line);
+    margin-block-end: 0.375rem;
+  }
+
+  /* Metadata beside a title: mono, quiet, tabular. */
+  .section-meta {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The caption over a CONTROL CLUSTER ("Token class", "Stage", "Grammar",
+   * "TAC function"). Mono and quiet on purpose: it names a set of choices, it
+   * is not a heading of content, so it must not compete with `.section-title`.
+   */
+  .group-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .framed {
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: var(--surface);
+  }
+
+  .rule {
+    border: 0;
+    border-block-start: 1px solid var(--line);
+    margin-block: 1rem;
+  }
+
+  /*
+   * A page's opening statement — the one place type is allowed to be large.
+   * Serif, tight, with the phase ordinal set in mono beside it.
+   */
+  .page-title {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  /*
+   * The opening line of a STATE — "nothing compiled yet", "this pass never
+   * ran", "no trace available". Deliberately smaller than `.page-title`: a
+   * state is a paragraph with a heading, not a second front page, and the
+   * route already stated its name once at the top (rule 2: one `.page-title`
+   * per route). Bigger than `.section-title` because it IS the whole view.
+   */
+  .state-title {
+    font-family: var(--font-serif);
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  /* Running prose: the explanatory voice. Measure-limited so it stays readable
+     next to a dense table (§6 line-length). */
+  .prose-note {
+    font-family: var(--font-serif);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--ink-muted);
+    max-width: 68ch;
+  }
+
+  /*
    * ELEVATION — exactly two levels.
-   *   flat:    `border border-line bg-surface` (cards, panels, tables)
+   *   flat:    `.section` / `.framed` (cards, panels, tables)
    *   overlay: `.overlay-panel` (tooltip, popover, select, dialog)
    * Nothing else casts a shadow, so a shadow always means "floats above".
    */
@@ -186,9 +334,18 @@
     vertical-align: text-bottom;
   }
 
-  /* ElkGraph node states — emphasis only, never layout (PLAN.md rule). */
+  /*
+   * ElkGraph node states — emphasis only, never layout (PLAN.md rule).
+   *
+   * The outline is `--control`, NOT `--line-strong`. A state's outline is the
+   * graphical object that carries the meaning here (WCAG 1.4.11 → 3:1), and
+   * measured on the sheet `--line-strong` is 2.34:1 in dark and 2.22:1 in light:
+   * the labels floated and the automaton around them vanished. `--control` is
+   * the lightest token whose contract guarantees >= 3:1 on canvas/surface/raised
+   * — 3.95:1 dark, 4.09:1 light. `--line-strong` stays what it is: a separator.
+   */
   .elk-node {
-    @apply rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-xs text-ink;
+    @apply rounded-md border border-control bg-surface px-3 py-1.5 font-mono text-xs text-ink;
     transition:
       box-shadow var(--dur) var(--ease),
       border-color var(--dur) var(--ease),
@@ -212,11 +369,29 @@
       0 0 0 2px var(--surface),
       0 0 0 4px var(--accent);
   }
-  /* Progressive reveal: `hiddenIds` marks what the trace has not built yet.
-     0.25 (not 0.1) keeps the reserved position legible as "coming", which is
-     the teaching point; below ~0.2 it reads as a rendering artefact. */
+  /*
+   * Progressive reveal: `hiddenIds` marks what the trace has not built yet.
+   *
+   * Opacity ALONE does not work. A `surface`-coloured node faded to 0.25 over a
+   * near-black canvas falls to roughly 1.2:1 against it — on dark backgrounds a
+   * hundred-state NFA became a grey smudge you could not read at all. So a
+   * not-yet-built node is drawn as a GHOST instead: no fill, a dashed outline,
+   * faint text. That is a shape signifier, it holds its contrast in both themes,
+   * and it still reads as "reserved, not yet real" — which is the teaching point.
+   *
+   * The ghost keeps NO residual opacity. `--line-strong` at 0.75 over the sheet
+   * measures 1.86:1 in dark — under the 3:1 floor, and visibly worse than the
+   * opacity-only version it replaced. A dash pattern already recedes on its own
+   * (it is half ink), so recession comes from the DASH and from the dropped
+   * fill, and every pixel that is drawn is drawn at full strength: `--control`
+   * 3.95:1 dark / 4.09:1 light, label `--ink-faint` 6.35 / 6.04.
+   */
   .elk-node.is-hidden {
-    opacity: 0.25;
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--control);
+    color: var(--ink-faint);
+    box-shadow: none;
   }
 }
 
@@ -230,6 +405,16 @@
  * why edge emphasis never rendered. Kept unlayered (and more specific than
  * xyflow's own `.react-flow__edge-path`) they win normally, on specificity.
  */
+/*
+ * THE UNHIGHLIGHTED EDGE is retoned from ElkGraph itself, as inline custom
+ * properties on the `.react-flow` root — see the note there. It is set inline
+ * rather than here because xyflow's own `.react-flow.dark` rule ships in an
+ * unlayered stylesheet whose source order relative to this file depends on the
+ * bundler, and an inline declaration is the one thing that always wins.
+ *
+ * Emphasis then reads as three weights, not two:
+ *   plain 1.25px `--control` · visited 1.75px `--ink-faint` · current 2.5px accent.
+ */
 .react-flow__edge.elk-edge-current .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 2.5;
@@ -238,8 +423,19 @@
   stroke: var(--ink-faint);
   stroke-width: 1.75;
 }
-.react-flow__edge.elk-edge-hidden {
-  opacity: 0.22;
+/* Same reasoning as `.elk-node.is-hidden`: the dash IS the signifier, and it
+   already reads as half-ink, so no opacity is layered on top of it — 0.6 put
+   this stroke at 1.61:1 in dark, i.e. invisible on the very graphs (subset
+   construction, LALR GOTO) that progressive reveal exists to explain. */
+.react-flow__edge.elk-edge-hidden .react-flow__edge-path {
+  stroke: var(--control);
+  stroke-width: 1.25;
+  /* Sparse, not faint. Recession comes from ink COVERAGE — a 2/5 dash draws a
+     quarter of the pixels a solid line does — while every pixel that is drawn
+     stays at full 3.95:1. Fading the colour instead is what made the subset
+     construction unreadable; this keeps the ghost quieter than a built edge on
+     a hairball like the DFA without ever dropping below the contrast floor. */
+  stroke-dasharray: 2 5;
 }
 .react-flow__attribution {
   background: transparent;

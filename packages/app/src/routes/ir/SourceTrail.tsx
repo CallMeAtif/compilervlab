@@ -29,10 +29,10 @@ export function SourceTrail({
   }, [trace, index]);
 
   return (
-    <section aria-label="Source position" className="flex flex-col gap-1.5">
-      <h3 className="text-sm font-semibold tracking-tight text-ink-muted">
-        Construct being translated
-      </h3>
+    <section aria-label="Source position" className="section mt-0">
+      <header className="section-head">
+        <h3 className="subsection-title">Construct</h3>
+      </header>
       <CodeStrip source={source} spans={spans} maxHeight="12rem" />
     </section>
   );

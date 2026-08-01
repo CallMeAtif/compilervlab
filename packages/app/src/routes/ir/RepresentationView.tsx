@@ -46,19 +46,19 @@ export const REPRESENTATIONS: ReadonlyArray<{
     id: 'quads',
     label: 'Quadruples',
     cite: '§6.2.2',
-    hint: 'Four fields — op, arg1, arg2, result. The canonical form: the result field names a temporary or variable, so instructions can be moved around freely.',
+    hint: 'op, arg1, arg2, result. Canonical; the result field names a temporary.',
   },
   {
     id: 'triples',
     label: 'Triples',
     cite: '§6.2.3',
-    hint: 'Three fields — the result is implicit: a value is referred to by the POSITION of the triple that computes it, written (i). Temporaries disappear.',
+    hint: 'No result field: a value is the position (i) of the triple computing it.',
   },
   {
     id: 'indirect',
     label: 'Indirect triples',
     cite: '§6.2.3',
-    hint: 'The same triples plus a separate instruction listing of pointers into them. Reordering code permutes the listing only — no triple is renumbered.',
+    hint: 'Triples plus a listing of pointers, so reordering renumbers nothing.',
   },
 ];
 
@@ -83,6 +83,12 @@ export interface RepresentationViewProps {
   pinnedInstr: number | null;
   onHoverInstr: (instr: number | null) => void;
   onPinInstr: (instr: number | null) => void;
+  /**
+   * The listing is filling the screen. Its 26rem cap is what makes it a figure
+   * on a page; fullscreen it has to be dropped, or the reader gets the same
+   * short window with black around it.
+   */
+  expanded?: boolean;
 }
 
 const ROLE_GLYPH: Record<ActiveList['role'], string> = {
@@ -106,11 +112,17 @@ function emphasisOf(
   };
 }
 
+/**
+ * The listing is a code figure, so an instruction is marked in the MARGIN — a
+ * 3px bar on the leading edge plus the gutter glyph — rather than by painting
+ * the whole row. Only the current instruction carries a whisper of accent fill
+ * so it can be found at a glance in a long listing.
+ */
 function rowClass(e: RowEmphasis): string {
-  if (e.patched) return 'bg-accent-soft/70 shadow-[inset_2px_0_0_var(--accent)]';
-  if (e.emitted) return 'bg-accent-soft shadow-[inset_2px_0_0_var(--accent)]';
-  if (e.linked) return 'bg-raised shadow-[inset_2px_0_0_var(--ink-faint)]';
-  if (e.listed) return 'shadow-[inset_2px_0_0_var(--warn)]';
+  if (e.patched) return 'shadow-[inset_3px_0_0_var(--accent)]';
+  if (e.emitted) return 'bg-accent-soft/45 shadow-[inset_3px_0_0_var(--accent)]';
+  if (e.linked) return 'shadow-[inset_3px_0_0_var(--ink-faint)]';
+  if (e.listed) return 'shadow-[inset_3px_0_0_var(--warn)]';
   return '';
 }
 
@@ -163,7 +175,7 @@ function PendingTarget({ list }: { list: ActiveList | undefined }) {
     >
       <span aria-hidden>_</span>
       <span className="sr-only">target not yet filled in</span>
-      {list && <span className="text-[10px] font-semibold">{ROLE_GLYPH[list.role]}</span>}
+      {list && <span className="text-3xs font-semibold">{ROLE_GLYPH[list.role]}</span>}
     </span>
   );
 }
@@ -175,27 +187,35 @@ function TableShell({
   head,
   children,
   minWidth = '30rem',
+  expanded = false,
 }: {
   label: string;
   head: ReactNode;
   children: ReactNode;
   minWidth?: string;
+  expanded?: boolean;
 }) {
   return (
-    <div className="max-h-[26rem] overflow-auto rounded-lg border border-line bg-surface">
+    // A code listing genuinely needs containing, so it is one of the few things
+    // that earns a border (`.framed`) — everything around it is rules and air.
+    <div className={clsx('framed artifact-scroll', expanded ? 'h-full max-h-none' : 'max-h-[26rem]')}>
       <table
         aria-label={label}
         className="w-full border-collapse text-left font-mono text-xs"
         style={{ minWidth }}
       >
-        <thead className="sticky top-0 z-10 bg-raised text-ink-muted">{head}</thead>
+        {/* The rule under the header is a shadow, not the <tr> border: a
+            border-collapse border does not stay put under a sticky thead. */}
+        <thead className="sticky top-0 z-10 bg-surface text-ink-faint shadow-[inset_0_-1px_0_var(--line-strong)]">
+          {head}
+        </thead>
         <tbody>{children}</tbody>
       </table>
     </div>
   );
 }
 
-const TH = 'h-8 px-2 font-semibold whitespace-nowrap';
+const TH = 'h-8 px-2 font-normal tracking-wide whitespace-nowrap';
 const TD = 'h-9 px-2 align-middle whitespace-nowrap';
 
 /** Roving-tabindex focus over data rows: one tab stop for the whole table,
@@ -263,8 +283,9 @@ function QuadTable({
     <TableShell
       label="Quadruples"
       minWidth="34rem"
+      expanded={props.expanded ?? false}
       head={
-        <tr className="border-b border-line">
+        <tr>
           <th className={clsx(TH, 'w-6')} aria-label="row marker" />
           <th className={clsx(TH, 'w-10 text-right')}>#</th>
           <th className={TH}>op</th>
@@ -401,7 +422,7 @@ function TripleRows({
 
 function tripleHead(showQuadColumn: boolean) {
   return (
-    <tr className="border-b border-line">
+    <tr>
       <th className={clsx(TH, 'w-6')} aria-label="row marker" />
       <th className={clsx(TH, 'w-12 text-right')}>pos</th>
       <th className={TH}>op</th>
@@ -416,7 +437,7 @@ function tripleHead(showQuadColumn: boolean) {
 // ── the view ─────────────────────────────────────────────────────────────────
 
 export function RepresentationView(props: RepresentationViewProps) {
-  const { representation, fn } = props;
+  const { representation, fn, expanded = false } = props;
   const quads = fn?.quads ?? [];
 
   // Derived views: recomputed from the quads emitted so far, never stored.
@@ -437,12 +458,7 @@ export function RepresentationView(props: RepresentationViewProps) {
   const [hoverTriple, setHoverTriple] = useState<number | null>(null);
 
   if (quads.length === 0) {
-    return (
-      <p className="rounded-lg border border-dashed border-line-strong bg-surface p-6 text-center text-sm text-ink-faint">
-        No instructions emitted for this function yet — step forward to watch the translation
-        write three-address code.
-      </p>
-    );
+    return <p className="prose-note text-sm">No instructions yet. Step forward.</p>;
   }
 
   if (representation === 'quads') {
@@ -451,7 +467,7 @@ export function RepresentationView(props: RepresentationViewProps) {
 
   if (representation === 'triples') {
     return (
-      <TableShell label="Triples" minWidth="32rem" head={tripleHead(true)}>
+      <TableShell label="Triples" minWidth="32rem" expanded={expanded} head={tripleHead(true)}>
         <TripleRows
           rows={derived.triples}
           props={props}
@@ -464,16 +480,20 @@ export function RepresentationView(props: RepresentationViewProps) {
 
   // indirect: the instruction listing beside the triples
   return (
-    <div className="grid gap-3 md:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]">
+    <div
+      className={clsx(
+        'grid gap-4 md:grid-cols-[minmax(0,13rem)_minmax(0,1fr)]',
+        expanded && 'h-full',
+      )}
+    >
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] text-ink-faint">
-          Instruction listing — execution order as pointers into the triples.
-        </p>
+        <p className="group-label">Listing</p>
         <TableShell
           label="Instruction listing"
           minWidth="11rem"
+          expanded={expanded}
           head={
-            <tr className="border-b border-line">
+            <tr>
               <th className={clsx(TH, 'w-14 text-right')}>instr</th>
               <th className={TH}>points to</th>
             </tr>
@@ -510,11 +530,8 @@ export function RepresentationView(props: RepresentationViewProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] text-ink-faint">
-          Triples — permuting the listing on the left reorders the code without renumbering
-          any row here.
-        </p>
-        <TableShell label="Triples" minWidth="30rem" head={tripleHead(false)}>
+        <p className="group-label">Triples</p>
+        <TableShell label="Triples" minWidth="30rem" expanded={expanded} head={tripleHead(false)}>
           <TripleRows
             rows={derived.triples}
             props={props}

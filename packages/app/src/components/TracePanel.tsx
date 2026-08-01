@@ -23,7 +23,6 @@ import { StepControls, type JumpTarget } from './StepControls';
 import { ExplainCard } from './ExplainCard';
 
 interface TracePanelCommonProps<S, E extends { kind: string }> {
-  title?: string;
   className?: string;
   /** Per-algorithm "jump to…" entries, rendered inside StepControls. */
   jumpTargets?: readonly JumpTarget<E>[];
@@ -87,7 +86,6 @@ function TracePanelOwning<S, E extends { kind: string }>({
 
 function TracePanelBody<S, E extends { kind: string }>({
   stepper,
-  title,
   className,
   jumpTargets,
   children,
@@ -96,19 +94,19 @@ function TracePanelBody<S, E extends { kind: string }>({
 
   return (
     <div className={clsx('flex flex-col gap-3', className)}>
-      {title && (
-        <h2 className="text-sm font-semibold tracking-tight text-ink-muted">{title}</h2>
-      )}
-
+      {/* A caveat, not an alarm: quiet prose behind a dashed warn rule (dashed
+          is the warn shape signifier, so it survives greyscale). */}
       {shown.truncated && (
-        <div
+        <p
           role="status"
-          className="flex items-center gap-2 rounded-lg border border-warn/50 bg-warn-soft px-3 py-2 text-sm text-warn"
+          className="flex items-start gap-2 border-l-2 border-dashed border-warn pl-2.5 text-sm leading-relaxed text-warn"
         >
-          <TriangleAlert aria-hidden className="size-4 shrink-0" />
-          Trace truncated at {shown.length.toLocaleString()} steps — the final artifact is
-          still exact, but later steps are not replayable.
-        </div>
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Truncated at {shown.length.toLocaleString()} steps. The final artifact is exact;
+            later steps are not replayable.
+          </span>
+        </p>
       )}
 
       {children?.(stepper)}

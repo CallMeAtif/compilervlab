@@ -116,16 +116,21 @@ export function scrubber(page: Page): Locator {
   return stepControls(page).locator('[role="slider"]');
 }
 
+/*
+ * ABSOLUTE trace position, read off the controls group. The scrubber's own
+ * aria-valuenow counts NAVIGABLE positions, which at macro level skips every
+ * filtered micro step — so it is the wrong thing to assert a step number on.
+ */
 export async function stepIndex(page: Page): Promise<number> {
-  return Number(await scrubber(page).getAttribute('aria-valuenow'));
+  return Number(await stepControls(page).getAttribute('data-step-index'));
 }
 
 export async function stepCount(page: Page): Promise<number> {
-  return Number(await scrubber(page).getAttribute('aria-valuemax'));
+  return Number(await stepControls(page).getAttribute('data-step-total'));
 }
 
 export async function expectStep(page: Page, index: number): Promise<void> {
-  await expect(scrubber(page)).toHaveAttribute('aria-valuenow', String(index));
+  await expect(stepControls(page)).toHaveAttribute('data-step-index', String(index));
 }
 
 export const nextButton = (page: Page): Locator =>
@@ -139,13 +144,21 @@ export const pauseButton = (page: Page): Locator =>
 export const resetButton = (page: Page): Locator =>
   stepControls(page).getByRole('button', { name: /^Reset/ });
 
-/** Pick a playback speed from the transport's speed menu ("0.5" … "4"). */
+/**
+ * Pick a playback speed ("0.5" … "4").
+ *
+ * Speed, micro steps and the jump targets live behind the transport's single
+ * options menu (components/StepControls.tsx), so this opens it first and closes
+ * it again — the menu overlaps the artifact while it is open.
+ */
 export async function setSpeed(page: Page, speed: '0.5' | '1' | '2' | '4'): Promise<void> {
-  await stepControls(page).getByRole('combobox', { name: 'Playback speed' }).click();
-  await page.getByRole('option', { name: `${speed}×` }).click();
-  await expect(
-    stepControls(page).getByRole('combobox', { name: 'Playback speed' }),
-  ).toContainText(`${speed}×`);
+  const controls = stepControls(page);
+  await controls.getByRole('button', { name: /^Step options/ }).click();
+  const option = controls.getByRole('radio', { name: `${speed}×`, exact: true });
+  await option.click();
+  await expect(option).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+  await expect(option).toBeHidden();
 }
 
 /** Seek to the end of the trace with the transport's own End shortcut. */

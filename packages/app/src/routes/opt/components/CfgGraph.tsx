@@ -8,7 +8,7 @@
  * which are emphasis-only props, and the React content inside a node — never
  * the graph structure, so ELK runs once.
  */
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { clsx } from 'clsx';
 import { CornerDownRight, LogIn, LogOut } from 'lucide-react';
 import {
@@ -74,6 +74,13 @@ export interface CfgGraphProps {
   markedQuads?: ReadonlySet<number>;
   /** Definite height for the graph canvas (ElkGraph needs one — see its docs). */
   graphHeight?: number | string;
+  /**
+   * Transport shown as a bottom bar while the graph is fullscreen. A flow
+   * graph is the artifact this phase most needs the whole screen for, and
+   * fullscreen hides the TracePanel — so pass the view's stepper transport
+   * here or stepping stops at the moment you expand it.
+   */
+  controls?: ReactNode;
   className?: string;
   ariaLabel?: string;
 }
@@ -99,6 +106,7 @@ export function CfgGraph({
   badges,
   markedQuads,
   graphHeight = '24rem',
+  controls,
   className,
   ariaLabel = 'Control-flow graph',
 }: CfgGraphProps) {
@@ -164,6 +172,7 @@ export function CfgGraph({
         visitedIds={visited}
         currentEdgeIds={currentEdgeSet}
         height={graphHeight}
+        controls={controls}
         className="w-full"
       />
       <p className="sr-only">

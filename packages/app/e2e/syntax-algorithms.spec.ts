@@ -84,7 +84,7 @@ const ALGORITHMS: readonly AlgoCase[] = [
     param: 'slr',
     check: async (page) => {
       await heading(page, /SLR\(1\) ACTION \/ GOTO/);
-      await heading(page, /FOLLOW sets used for the reduce entries/);
+      await heading(page, 'FOLLOW sets');
     },
   },
   {

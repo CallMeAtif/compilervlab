@@ -3,7 +3,7 @@
  * lookahead is), the Fig 4.21 / Fig 4.38 move table, and a TidyTree wrapper that
  * refuses to draw forests big enough to freeze the tab without being asked.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { clsx } from 'clsx';
 import { TidyTree, type TidyTreeNode } from '../../../components/viz/TidyTree';
 import { Note, TextButton } from './ui';
@@ -29,14 +29,14 @@ export function InputRibbon({
   const cells = [...symbols, '$'];
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-[11px] font-semibold tracking-wide text-ink-faint uppercase">
+      <span className="group-label">
         {label} · {pos} / {symbols.length} consumed
       </span>
       <div
         ref={ref}
         role="list"
         aria-label={label}
-        className="flex max-h-20 flex-wrap gap-1 overflow-auto rounded-md border border-line bg-canvas p-1.5"
+        className="framed artifact-scroll flex max-h-20 flex-wrap gap-1 p-1.5"
       >
         {cells.map((sym, i) => {
           const consumed = i < pos;
@@ -114,7 +114,7 @@ export function MoveTable<R extends object>({
       )}
       <div
         ref={bodyRef}
-        className="max-h-96 min-w-0 overflow-auto rounded-lg border border-line bg-surface"
+        className="framed artifact-scroll max-h-96 min-w-0"
       >
         <table className="w-full border-collapse font-mono text-[11px]" aria-label={ariaLabel}>
           <thead className="sticky top-0 z-10 bg-raised text-ink-muted">
@@ -166,7 +166,7 @@ export function MoveTable<R extends object>({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={columns.length + 1} className="px-2 py-6 text-center text-ink-faint">
-                  No moves yet — step forward to start the parse.
+                  Step forward to start the parse.
                 </td>
               </tr>
             )}
@@ -187,16 +187,19 @@ export function TreePanel({
   currentIds,
   visitedIds,
   emptyLabel,
+  controls,
 }: {
   root: TidyTreeNode | null;
   nodeCount: number;
   currentIds?: readonly string[];
   visitedIds?: readonly string[];
   emptyLabel: string;
+  /** Transport bar for the tree's fullscreen mode (fullscreen hides the panel). */
+  controls?: ReactNode;
 }) {
   const [forced, setForced] = useState(false);
   if (!root || nodeCount === 0) {
-    return <p className="p-2 text-sm text-ink-muted">{emptyLabel}</p>;
+    return <p className="prose-note text-sm">{emptyLabel}</p>;
   }
   if (!forced && nodeCount > TREE_AUTO_LIMIT) {
     return (
@@ -205,9 +208,7 @@ export function TreePanel({
         title={`${nodeCount.toLocaleString()} nodes — the tree is not drawn automatically`}
         actions={<TextButton onClick={() => setForced(true)}>Draw it anyway</TextButton>}
       >
-        A concrete parse tree for a real C program has thousands of nodes and is re-laid out on
-        every step. The move table beside it carries the same information step by step; draw the
-        tree when you want the shape.
+        A tree this size is re-laid out on every step. The move table carries the same information.
       </Note>
     );
   }
@@ -216,6 +217,7 @@ export function TreePanel({
       root={root}
       currentIds={currentIds}
       visitedIds={visitedIds}
+      controls={controls}
       className="max-h-[32rem]"
     />
   );

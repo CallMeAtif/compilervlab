@@ -16,35 +16,38 @@ export function PhasePlaceholder({ phase }: { phase: Phase }) {
   const compilation = useCompilationStore((s) => s.compilation);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-      <section className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-line-strong bg-surface p-10 text-center">
-        <Construction aria-hidden className="size-8 text-ink-faint" strokeWidth={1.5} />
-        <h2 className="text-base font-semibold text-ink">
-          {info.title} visualization lands here
-        </h2>
-        <p className="max-w-md text-sm text-ink-muted">
+    <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
+      <section className="section">
+        <div className="section-head">
+          <h2 className="section-title flex items-center gap-2">
+            <Construction aria-hidden className="size-4 text-ink-faint" strokeWidth={1.75} />
+            {info.title} visualization lands here
+          </h2>
+          <span className="section-meta">in progress</span>
+        </div>
+        <p className="prose-note">
           The {info.title.toLowerCase()} team is building this view: artifact visualization on
           the left, the step-through TracePanel on the right, every step cited to the Dragon
           Book.
         </p>
-        <dl className="mt-2 grid grid-cols-[auto_auto] gap-x-4 gap-y-1 rounded-md bg-raised px-4 py-2 text-left font-mono text-xs text-ink-muted">
-          <dt>?algo=</dt>
+        <dl className="mt-4 grid w-fit grid-cols-[auto_auto] gap-x-6 gap-y-1 font-mono text-xs text-ink-muted">
+          <dt className="text-ink-faint">?algo=</dt>
           <dd>{algo ?? '(default)'}</dd>
-          <dt>?step=</dt>
+          <dt className="text-ink-faint">?step=</dt>
           <dd>{step ?? '—'}</dd>
-          <dt>?pass=</dt>
+          <dt className="text-ink-faint">?pass=</dt>
           <dd>{pass ?? '—'}</dd>
         </dl>
       </section>
 
-      <aside className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold tracking-tight text-ink-muted">
-          Source under compilation
-        </h3>
+      <aside className="section">
+        <div className="section-head">
+          <h2 className="section-title">Source under compilation</h2>
+        </div>
         {compilation ? (
           <CodeStrip source={compilation.source} maxHeight="24rem" />
         ) : (
-          <p className="rounded-lg border border-dashed border-line-strong p-4 text-sm text-ink-faint">
+          <p className="prose-note">
             Nothing compiled yet — go to the overview and press Compile.
           </p>
         )}

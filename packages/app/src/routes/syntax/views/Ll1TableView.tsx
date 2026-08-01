@@ -26,6 +26,7 @@ import { terminalColumns, symbols } from '../lib/grammars';
 import { GrammarRail, productionRefs } from '../components/GrammarRail';
 import { ViewGrid } from '../components/Layout';
 import { Diagnostics, Legend, Panel, Skeleton, StepPanel, Stat } from '../components/ui';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 
 export function Ll1TableView(ctx: ViewContext) {
   const { trace, phase, diagnostics } = useTrace<LL1TableState, LL1TableEvent>(
@@ -123,34 +124,37 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<LL1TableState, L
           <Panel
             title="M[A, a]"
             subtitle={`${filled} cell${filled === 1 ? '' : 's'} filled · ${state.conflicts.length} conflict${state.conflicts.length === 1 ? '' : 's'}`}
-            bodyClassName="flex flex-col gap-2"
+            bodyClassName="flex flex-col gap-3"
           >
             <VirtualTable
               aria-label="LL(1) predictive parsing table"
               cornerLabel="A \ a"
               columns={columns}
               rows={rows}
-              height={440}
+              // Fits the nonterminals, which are FIXED for the grammar — the
+              // table never resizes as the trace steps (layout-stability rule).
+              height={Math.min(440, 34 * (g.nonterminals.length + 1) + 14)}
+              controls={<FullscreenTransport stepper={stepper} />}
             />
             <Legend
               items={[
                 {
-                  label: compact ? 'cell shows the production id (see rail)' : 'cell shows the production body',
+                  label: compact ? 'production id' : 'production body',
                   swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border border-line bg-surface" />,
                 },
                 {
-                  label: 'cell just written',
+                  label: 'just written',
                   swatch: <span aria-hidden className="inline-block h-3 w-4 rounded-sm border-2 border-accent bg-accent-soft" />,
                 },
                 {
-                  label: 'conflict — two productions (hatched)',
+                  label: 'conflict',
                   swatch: <span aria-hidden className="cell-conflict inline-block h-3 w-4 rounded-sm" />,
                 },
               ]}
             />
           </Panel>
 
-          <Panel title="Conflicts — why this grammar is (or is not) LL(1)" bodyClassName="flex flex-col gap-2">
+          <Panel title="Conflicts" bodyClassName="flex flex-col gap-3">
             <ConflictList
               conflicts={state.conflicts}
               onSelect={(c) => {
@@ -176,7 +180,7 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<LL1TableState, L
             { label: 'next conflict', pred: (s) => s.event.kind === 'll1.conflict' },
           ]}
         >
-          <Panel title="Production under consideration" bodyClassName="flex flex-col gap-2">
+          <Panel title="Current production" bodyClassName="flex flex-col gap-3">
             {currentProduction ? (
               <>
                 <p className="font-mono text-sm text-ink">
@@ -187,19 +191,11 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<LL1TableState, L
                   FIRST({symbols(currentProduction.rhs)}) ={' '}
                   <span className="font-mono text-ink">{`{ ${(firstAlpha ?? []).join(', ')} }`}</span>
                 </p>
-                <p className="text-xs leading-relaxed text-ink-muted">
-                  Algorithm 4.31 writes this production into M[{currentProduction.lhs}, a] for every
-                  terminal a in that set; if ε is in it, also into M[{currentProduction.lhs}, b] for
-                  every b in FOLLOW({currentProduction.lhs}).
-                </p>
               </>
             ) : (
-              <p className="text-xs leading-relaxed text-ink-muted">
-                Step to a macro step (“Consider production …”) to see the prediction set that
-                decides where that production is written.
-              </p>
+              <p className="prose-note text-sm">Step to a production.</p>
             )}
-            <div className="flex flex-wrap gap-1.5 pt-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
               <Stat label="cells" value={filled} />
               <Stat label="conflicts" value={state.conflicts.length} />
             </div>
@@ -222,25 +218,25 @@ function ConflictList({
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   if (conflicts.length === 0) {
     return (
-      <p className="text-xs leading-relaxed text-ink-muted">
+      <p className="prose-note text-sm">
         {total === 0
-          ? 'No cell ever holds two productions: the prediction sets of the alternatives of every nonterminal are pairwise disjoint, so this grammar is LL(1).'
-          : `None discovered yet — ${total} appear${total === 1 ? 's' : ''} later in the construction.`}
+          ? 'None. No cell holds two productions, so this grammar is LL(1).'
+          : `None yet. ${total} appear${total === 1 ? 's' : ''} later.`}
       </p>
     );
   }
   return (
-    <ul className="flex max-h-64 flex-col gap-1.5 overflow-auto">
+    <ul className="artifact-scroll flex max-h-64 flex-col gap-2">
       {conflicts.map((c, i) => (
         <li
           key={`${c.nonterminal}|${c.terminal}|${i}`}
-          className="flex flex-wrap items-center gap-2 rounded-md border border-err/50 bg-err-soft px-2 py-1.5"
+          className="flex flex-wrap items-center gap-2 border-l-2 border-err py-1 pl-2.5"
         >
           <span aria-hidden className="cell-conflict size-3 shrink-0 rounded-sm" />
-          <span className="font-mono text-[11px] text-ink">
+          <span className="font-mono text-2xs text-ink">
             M[{c.nonterminal}, {c.terminal}]
           </span>
-          <span className="rounded-full bg-err/20 px-1.5 py-0.5 text-[10px] font-semibold text-err">
+          <span className="font-mono text-3xs font-semibold text-err">
             {c.entries.length} productions
           </span>
           <span className="flex-1" />
@@ -248,7 +244,7 @@ function ConflictList({
             type="button"
             aria-label={`Jump to the conflict at M[${c.nonterminal}, ${c.terminal}]`}
             onClick={() => onSelect(c)}
-            className="h-7 cursor-pointer rounded border border-control bg-surface px-2 text-[11px] text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+            className="h-7 cursor-pointer rounded-sm px-2 text-2xs text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent"
           >
             go to step
           </button>
@@ -267,7 +263,7 @@ function ConflictList({
                 side="left"
                 sideOffset={6}
                 collisionPadding={8}
-                className="z-50 w-80 rounded-md border border-line bg-surface p-3 text-sm leading-relaxed text-ink shadow-lg"
+                className="overlay-panel z-50 w-80 rounded-md p-3 text-sm leading-relaxed text-ink"
               >
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-xs font-semibold text-ink-muted">

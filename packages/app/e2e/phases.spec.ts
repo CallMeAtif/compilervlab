@@ -69,7 +69,12 @@ const PHASES: readonly PhaseCase[] = [
       await expect(page.getByRole('heading', { name: 'FIRST sets' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'FOLLOW sets' })).toBeVisible();
       await expect.poll(async () => page.getByRole('row').count()).toBeGreaterThan(5);
-      // The production rail shows Grammar 4.1 itself.
+      // The productions are REFERENCE material, so they live behind a
+      // disclosure (docs/EDITORIAL.md §0 — max two columns of content). Closed,
+      // it still names the grammar; opened, it is Grammar 4.1 itself.
+      const productions = page.getByRole('region', { name: 'Grammar productions' });
+      await expect(productions).toContainText('Dragon 4.1');
+      await productions.locator('summary').click();
       await expect(page.getByText('E → E + T', { exact: true })).toBeVisible();
     },
     minSteps: 10,

@@ -6,47 +6,128 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { Trace } from '@lab/trace';
 import type { Diagnostic } from '@lab/core';
 import { clsx } from 'clsx';
-import { Info, Loader2, OctagonAlert, TriangleAlert } from 'lucide-react';
+import {
+  ChevronRight,
+  CircleCheck,
+  Info,
+  Loader2,
+  OctagonAlert,
+  TriangleAlert,
+} from 'lucide-react';
 import { TracePanel } from '../../components/TracePanel';
 import type { JumpTarget } from '../../components/StepControls';
+import { FullscreenBody, FullscreenToggle } from '../../components/Fullscreen';
+import { useFullscreen } from '../../lib/useFullscreen';
 import { useStepper, type Stepper, type UseStepperOptions } from '../../lib/useStepper';
 import { usePhaseUrlState } from '../../lib/urlState';
 import type { CodegenTrace } from './useCodegenTrace';
 
 // ── layout ──────────────────────────────────────────────────────────────────
 
+/**
+ * A titled region (docs/EDITORIAL.md §1): serif title over a hairline, air
+ * below, and NO box. `frame` opts the body into a border — reserved for the
+ * artifacts that genuinely need containing: the assembly listing, the graphs,
+ * the long scrolling tables.
+ *
+ * There is deliberately NO `subtitle` slot: a panel gets a LABEL, never a
+ * standing sentence (docs/EDITORIAL.md §0). Metadata goes in `actions`;
+ * explanation belongs in the step prose, which changes as you step.
+ */
 export function Panel({
   title,
-  subtitle,
   actions,
   bodyClassName,
   className,
+  frame = false,
+  fullscreen,
   children,
 }: {
+  /** A label. Four words at most. */
   title: string;
-  subtitle?: ReactNode;
   actions?: ReactNode;
   bodyClassName?: string;
   className?: string;
+  /** Opt in to a border — artifacts that scroll or must be visually contained. */
+  frame?: boolean;
+  /**
+   * Opt in to fullscreen. The toggle joins `actions` in the head rather than
+   * floating over the artifact — over the assembly listing that corner is the
+   * first line's role tag. `controls` is the transport the artifact keeps
+   * while it fills the screen, since fullscreen hides the TracePanel.
+   */
+  fullscreen?: { label: string; controls?: ReactNode; bodyClassName?: string };
   children: ReactNode;
 }) {
+  // Called unconditionally (hook rules); inert until a caller opts in.
+  const fs = useFullscreen();
+  const body = clsx('min-w-0', frame && 'framed artifact-scroll', bodyClassName);
+
   return (
-    <section
-      aria-label={title}
-      className={clsx('flex min-w-0 flex-col rounded-lg border border-line bg-surface', className)}
-    >
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line px-3 py-2">
-        <h3 className="text-xs font-semibold tracking-wide text-ink-muted uppercase">{title}</h3>
-        {subtitle && <p className="text-xs text-ink-faint">{subtitle}</p>}
-        {actions && (
-          <>
-            <span className="flex-1" />
+    <section aria-label={title} className={clsx('section min-w-0', className)}>
+      <header className="section-head">
+        <h2 className="section-title">{title}</h2>
+        {/* Unwrapped when there is no toggle: `actions` styles itself against
+            the head's own baseline row, and a flex box would re-align it. */}
+        {fullscreen ? (
+          <span className="flex shrink-0 items-center gap-1.5">
             {actions}
-          </>
+            <FullscreenToggle fs={fs} label={fullscreen.label} />
+          </span>
+        ) : (
+          (actions ?? null)
         )}
       </header>
-      <div className={clsx('min-w-0', bodyClassName ?? 'p-3')}>{children}</div>
+      {fullscreen ? (
+        <FullscreenBody
+          fs={fs}
+          controls={fullscreen.controls}
+          className={body}
+          fullscreenClassName={fullscreen.bodyClassName}
+        >
+          {children}
+        </FullscreenBody>
+      ) : (
+        <div className={body}>{children}</div>
+      )}
     </section>
+  );
+}
+
+/**
+ * Reference material — keys, register files, rule statements — one interaction
+ * away instead of permanently on screen. Native `<details>`: keyboard operable
+ * and announced, with no state of our own.
+ */
+export function Disclosure({
+  summary,
+  meta,
+  children,
+  className,
+}: {
+  summary: string;
+  /** Mono metadata that stays visible on the closed summary line. */
+  meta?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <details className={clsx('group section', className)}>
+      <summary className="flex h-11 w-fit cursor-pointer list-none items-center gap-1.5 rounded-sm text-ink-faint transition-colors duration-[var(--dur-fast)] hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-3 shrink-0 transition-transform duration-[var(--dur-fast)] group-open:rotate-90"
+        />
+        <span className="group-label">{summary}</span>
+        {meta && (
+          <span className="section-meta">
+            <span aria-hidden>· </span>
+            {meta}
+          </span>
+        )}
+      </summary>
+      <div className="mt-1">{children}</div>
+    </details>
   );
 }
 
@@ -70,7 +151,9 @@ export function TraceSplit<S, E extends { kind: string }>({
   const stepper = useStepper<S, E>(trace, stepperOptions);
   return (
     <div className="cg-split">
-      <div className="cg-viz flex min-w-0 flex-col gap-3">{children(stepper)}</div>
+      {/* No gap: the artifact column's children are `.section`s, and the
+          editorial rhythm between titled regions is `.section + .section`. */}
+      <div className="cg-viz flex min-w-0 flex-col">{children(stepper)}</div>
       <TracePanel stepper={stepper} className="cg-tracepanel min-w-0" jumpTargets={jumpTargets} />
     </div>
   );
@@ -123,23 +206,34 @@ export function Notice({
   children?: ReactNode;
   className?: string;
 }) {
-  const Icon = tone === 'error' ? OctagonAlert : tone === 'warn' ? TriangleAlert : Info;
+  // Shape as well as colour: each tone has its own glyph, so the meaning
+  // survives greyscale even though the only fill is a 2px rule.
+  const Icon =
+    tone === 'error'
+      ? OctagonAlert
+      : tone === 'warn'
+        ? TriangleAlert
+        : tone === 'ok'
+          ? CircleCheck
+          : Info;
   return (
     <div
       role="status"
       className={clsx(
-        'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
-        tone === 'error' && 'border-err/50 bg-err-soft text-err',
-        tone === 'warn' && 'border-warn/50 bg-warn-soft text-warn',
-        tone === 'ok' && 'border-ok/40 bg-ok-soft text-ok',
-        tone === 'info' && 'border-line bg-raised text-ink-muted',
+        // A remark, not a box: a coloured rule on the leading edge plus the
+        // tone's own glyph, so the meaning survives greyscale without a fill.
+        'section flex items-start gap-2.5 border-l-2 py-0.5 pl-3 text-sm',
+        tone === 'error' && 'border-l-err [&>svg]:text-err',
+        tone === 'warn' && 'border-l-warn [&>svg]:text-warn',
+        tone === 'ok' && 'border-l-ok [&>svg]:text-ok',
+        tone === 'info' && 'border-l-line-strong [&>svg]:text-ink-faint',
         className,
       )}
     >
-      <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
-      <div className="min-w-0 flex-1">
-        {title && <p className="font-medium">{title}</p>}
-        {children && <div className="[&_p]:mt-1">{children}</div>}
+      <Icon aria-hidden className="mt-1 size-4 shrink-0" />
+      <div className="min-w-0 flex-1 text-ink-muted">
+        {title && <p className="font-semibold text-ink">{title}</p>}
+        {children && <div className="leading-relaxed [&_p]:mt-1">{children}</div>}
       </div>
     </div>
   );
@@ -148,28 +242,24 @@ export function Notice({
 export function DiagnosticList({ diagnostics }: { diagnostics: readonly Diagnostic[] }) {
   if (diagnostics.length === 0) return null;
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-3">
       {diagnostics.map((d, i) => (
         <li
           key={`${d.phase}-${d.span.start}-${i}`}
           className={clsx(
-            'rounded-md border px-3 py-2 text-sm',
-            d.severity === 'error'
-              ? 'border-err/50 bg-err-soft text-err'
-              : 'border-warn/50 bg-warn-soft text-warn',
+            'border-l-2 pl-3',
+            d.severity === 'error' ? 'border-l-err' : 'border-l-warn',
           )}
         >
-          <p className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-surface/70 px-2 font-mono text-[11px] tracking-wide uppercase">
-              {d.phase}
+          <p className="font-mono text-2xs text-ink-faint">
+            <span className={d.severity === 'error' ? 'text-err' : 'text-warn'}>
+              {d.severity === 'error' ? '■' : '▲'} {d.phase}
             </span>
-            <span className="font-mono text-[11px]">
-              line {d.span.line}:{d.span.col}
-            </span>
+            {'  '}line {d.span.line}:{d.span.col}
           </p>
-          <p className="mt-1 font-medium">{d.message}</p>
-          {d.rule && <p className="mt-1 text-xs opacity-90">Rule: {d.rule}</p>}
-          {d.hint && <p className="mt-1 text-xs opacity-90">{d.hint}</p>}
+          <p className="mt-0.5 text-sm text-ink">{d.message}</p>
+          {d.rule && <p className="prose-note mt-0.5 text-sm">Rule: {d.rule}</p>}
+          {d.hint && <p className="prose-note mt-0.5 text-sm">{d.hint}</p>}
         </li>
       ))}
     </ul>
@@ -178,18 +268,16 @@ export function DiagnosticList({ diagnostics }: { diagnostics: readonly Diagnost
 
 export function LoadingPanel({ label }: { label: string }) {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-lg border border-line bg-surface p-8 text-sm text-ink-faint"
-    >
-      <Loader2 aria-hidden className="size-5 animate-spin text-accent" />
-      {label}
-      <div aria-hidden className="mt-2 flex w-full max-w-md flex-col gap-2">
+    <div role="status" aria-live="polite" className="section flex flex-col gap-4 py-10">
+      <p className="flex items-center gap-2.5 text-sm text-ink-muted">
+        <Loader2 aria-hidden className="size-4 shrink-0 animate-spin text-accent" />
+        {label}
+      </p>
+      <div aria-hidden className="flex w-full max-w-md flex-col gap-2">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-3 rounded bg-raised"
+            className="h-px animate-pulse bg-line"
             style={{ width: `${100 - i * 12}%` }}
           />
         ))}
@@ -219,21 +307,37 @@ export function TraceGate<S, E extends { kind: string }>({
   }
   if (result.status === 'unavailable' || result.trace === null) {
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
-        <Notice tone="error" title={unavailableTitle}>
-          <p className="text-sm">
-            This stage never ran, so there is nothing to step through. Fix the diagnostics below
-            (or raise K, for a coloring that cannot converge) and compile again.
-          </p>
-        </Notice>
-        <DiagnosticList diagnostics={result.diagnostics} />
-      </div>
+      <section className="section max-w-3xl py-4">
+        <h2 className="state-title text-err">{unavailableTitle}</h2>
+        <p className="prose-note mt-3">This stage never ran. Fix the diagnostics, or raise K.</p>
+        {result.diagnostics.length > 0 && (
+          <>
+            <hr className="rule" />
+            <DiagnosticList diagnostics={result.diagnostics} />
+          </>
+        )}
+      </section>
     );
   }
   return <>{children(result.trace)}</>;
 }
 
 // ── tiny inline atoms ───────────────────────────────────────────────────────
+
+/**
+ * The one control skin this phase uses (docs/EDITORIAL.md §"what done looks
+ * like"): the CURRENT choice gets a soft accent wash plus an underline rule —
+ * the rule is the shape signifier — and every other choice is quiet text that
+ * only earns a background on hover. 44px tall, so it is still a real target.
+ */
+export function cgControl(selected: boolean): string {
+  return clsx(
+    'flex h-11 cursor-pointer items-center rounded-sm px-2.5 whitespace-nowrap transition-colors duration-[var(--dur-fast)]',
+    selected
+      ? 'bg-accent-soft font-semibold text-ink shadow-[inset_0_-2px_0_var(--accent)]'
+      : 'text-ink-muted hover:bg-raised hover:text-ink',
+  );
+}
 
 export function Tag({
   children,
@@ -250,12 +354,12 @@ export function Tag({
     <span
       title={title}
       className={clsx(
-        'inline-flex h-5 shrink-0 items-center gap-1 rounded-full border px-2 font-mono text-[11px] whitespace-nowrap',
-        tone === 'neutral' && 'border-line bg-raised text-ink-muted',
-        tone === 'accent' && 'border-accent/60 bg-accent-soft text-ink',
-        tone === 'ok' && 'border-ok/40 bg-ok-soft text-ok',
-        tone === 'warn' && 'border-warn/50 bg-warn-soft text-warn',
-        tone === 'err' && 'border-err/50 bg-err-soft text-err',
+        'inline-flex h-5 shrink-0 items-center gap-1 rounded-full px-2 font-mono text-2xs whitespace-nowrap',
+        tone === 'neutral' && 'bg-raised text-ink-muted',
+        tone === 'accent' && 'bg-accent-soft text-ink shadow-[inset_0_0_0_1px_var(--accent)]',
+        tone === 'ok' && 'bg-ok-soft text-ok',
+        tone === 'warn' && 'bg-warn-soft text-warn',
+        tone === 'err' && 'bg-err-soft text-err',
         className,
       )}
     >
@@ -264,16 +368,33 @@ export function Tag({
   );
 }
 
+/** A figure key, set as a caption line rather than as chrome. */
+/**
+ * A shape/colour key, one interaction away instead of standing on the page.
+ *
+ * Every route presents reference material the same way: a `> key` summary that
+ * costs one line closed, native `<details>` so it is keyboard-operable and
+ * announced as a disclosure without a line of script.
+ */
 export function Legend({ items }: { items: Array<{ swatch: ReactNode; label: string }> }) {
   return (
-    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-ink-muted">
-      {items.map((it) => (
-        <li key={it.label} className="flex items-center gap-1.5">
-          {it.swatch}
-          {it.label}
-        </li>
-      ))}
-    </ul>
+    <details className="group min-w-0">
+      <summary className="flex h-8 w-fit cursor-pointer list-none items-center gap-1 rounded-sm font-mono text-2xs text-ink-faint transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-3 shrink-0 transition-transform duration-[var(--dur-fast)] group-open:rotate-90 motion-reduce:transition-none"
+        />
+        key
+      </summary>
+      <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 pb-1 font-mono text-2xs text-ink-faint">
+        {items.map((i) => (
+          <li key={i.label} className="flex items-center gap-1.5">
+            {i.swatch}
+            {i.label}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -293,20 +414,15 @@ export function FunctionPicker({
 }) {
   if (names.length <= 1 && !pinned) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] text-ink-faint">function</span>
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+      <span className="group-label mr-2">fn</span>
       {names.map((n) => (
         <button
           key={n}
           type="button"
           aria-pressed={n === value}
           onClick={() => onPick(n)}
-          className={clsx(
-            'h-7 cursor-pointer rounded-md border px-2 font-mono text-xs transition-colors',
-            n === value
-              ? 'border-accent bg-accent-soft text-ink'
-              : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
-          )}
+          className={clsx(cgControl(n === value), 'font-mono text-xs')}
         >
           {n}
         </button>
@@ -315,7 +431,7 @@ export function FunctionPicker({
         <button
           type="button"
           onClick={onFollow}
-          className="h-7 cursor-pointer rounded-md border border-control bg-surface px-2 text-xs text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+          className="flex h-11 cursor-pointer items-center px-2 text-sm text-accent underline decoration-accent/40 underline-offset-4 transition-colors hover:decoration-accent"
         >
           Follow trace
         </button>

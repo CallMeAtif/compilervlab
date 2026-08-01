@@ -23,48 +23,53 @@ const toggle = (page: Page) =>
   page.getByRole('button', { name: /Switch to (dark|light) theme/ });
 
 test.describe('theme toggle', () => {
-  test('switches to dark and back, and the page keeps rendering', async ({ page }) => {
+  test('starts dark regardless of the OS preference, and toggles both ways', async ({ page }) => {
+    // The Playwright config runs with colorScheme: 'light'. Dark is the app's
+    // unconditional default for a first-time reader, so the OS preference must
+    // NOT decide it — only a stored choice can.
     await page.goto('/');
     await expectPageAlive(page);
 
     const initialMarker = await themeMarker(page);
     const initialColor = await canvasColor(page);
-    expect(initialMarker).not.toContain('dark');
-
-    // → dark
-    await toggle(page).click();
-    await expect
-      .poll(async () => themeMarker(page), { message: 'the root should be marked dark' })
+    expect(initialMarker, 'dark is the default even under prefers-color-scheme: light')
       .toContain('dark');
-    await expect(toggle(page)).toHaveAccessibleName(/Switch to light theme/);
-    const darkColor = await canvasColor(page);
-    expect(darkColor, 'dark mode should repaint the canvas').not.toBe(initialColor);
-    await expectPageAlive(page);
 
-    // → back to light
+    // → light
     await toggle(page).click();
     await expect
       .poll(async () => themeMarker(page), { message: 'the root should be back to light' })
       .not.toContain('dark');
+    await expect(toggle(page)).toHaveAccessibleName(/Switch to dark theme/);
+    const lightColor = await canvasColor(page);
+    expect(lightColor, 'light mode should repaint the canvas').not.toBe(initialColor);
+    await expectPageAlive(page);
+
+    // → back to dark
+    await toggle(page).click();
     await expect
-      .poll(async () => canvasColor(page))
-      .toBe(initialColor);
+      .poll(async () => themeMarker(page), { message: 'the root should be marked dark' })
+      .toContain('dark');
+    await expect.poll(async () => canvasColor(page)).toBe(initialColor);
     await expectPageAlive(page);
   });
 
   test('the theme survives navigation into a phase route', async ({ page }) => {
     await page.goto('/');
+    // Start from light so the assertion below proves the CHOICE persisted,
+    // rather than passing because dark happens to be the default.
     await toggle(page).click();
-    await expect.poll(async () => themeMarker(page)).toContain('dark');
+    await expect.poll(async () => themeMarker(page)).not.toContain('dark');
 
     await page.locator('header a[href="/syntax"]').click();
     await page.waitForURL(/\/syntax/);
     await waitForTrace(page, 1);
     await expectPageAlive(page);
-    expect(await themeMarker(page)).toContain('dark');
+    expect(await themeMarker(page), 'the chosen light theme must survive the route change')
+      .not.toContain('dark');
 
     await toggle(page).click();
-    await expect.poll(async () => themeMarker(page)).not.toContain('dark');
+    await expect.poll(async () => themeMarker(page)).toContain('dark');
     await expectPageAlive(page);
   });
 });

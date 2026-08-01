@@ -49,10 +49,10 @@ function ErrorCard({
         onClick={onSelect}
         aria-current={selected ? 'true' : undefined}
         className={clsx(
-          'flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left transition-colors',
+          'flex w-full cursor-pointer flex-col gap-2 border-l-2 py-2 pl-3 text-left transition-colors',
           selected
-            ? 'border-err bg-err-soft shadow-[inset_0_0_0_1px_var(--err)]'
-            : 'border-err/40 bg-surface hover:border-err',
+            ? 'border-err bg-err-soft shadow-[inset_2px_0_0_var(--err)]'
+            : 'border-err/50 hover:bg-raised',
         )}
       >
         <span className="flex flex-wrap items-center gap-2">
@@ -76,7 +76,7 @@ function ErrorCard({
           <span className="flex items-start gap-2 text-xs text-ink-muted">
             <BookOpen aria-hidden className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              <span className="font-medium">§{card.section} — the rule that failed:</span>{' '}
+              <span className="font-mono text-2xs text-ink-faint">§{card.section}</span>{' '}
               {card.rule}
             </span>
           </span>
@@ -135,31 +135,24 @@ function ErrorsBody({
         title="Source"
         subtitle={
           cards.length === 0
-            ? 'no lexical errors to point at'
+            ? 'no error spans'
             : selected === null
-              ? `all ${cards.length} error span${cards.length === 1 ? '' : 's'}`
+              ? `${cards.length} error span${cards.length === 1 ? '' : 's'}`
               : 'the selected error'
         }
-        bodyClassName="p-0"
       >
-        <CodeStrip source={source} spans={spans} maxHeight="15rem" className="rounded-none border-0" />
+        <CodeStrip source={source} spans={spans} maxHeight="15rem" />
       </Panel>
 
       <Panel
         title="Lexical diagnostics"
-        subtitle={`${cards.length} error${cards.length === 1 ? '' : 's'} · §3.1.4 panic-mode recovery`}
+        subtitle={`${cards.length} error${cards.length === 1 ? '' : 's'} · §3.1.4`}
       >
         {cards.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <CircleCheck aria-hidden className="size-7 text-ok" strokeWidth={1.5} />
-            <p className="text-sm font-semibold text-ink">No lexical errors</p>
-            <p className="max-w-md text-sm text-ink-muted">
-              Every character of the source was consumed by the combined DFA, skipped as whitespace
-              or a comment, or folded into a token. Lexical analysis can only complain about
-              characters that begin no token at all — misspelled keywords, unbalanced brackets and
-              type errors are caught later, by the parser and the type checker.
-            </p>
-          </div>
+          <p className="flex items-center gap-2 py-2 text-base text-ink">
+            <CircleCheck aria-hidden className="size-4 shrink-0 text-ok" strokeWidth={1.75} />
+            No lexical errors
+          </p>
         ) : (
           <ul className="flex flex-col gap-2">
             {cards.map((c) => (
@@ -177,15 +170,6 @@ function ErrorsBody({
           </ul>
         )}
       </Panel>
-
-      {cards.length > 0 && (
-        <Note tone="info" title="How the scanner recovers">
-          The scanner never gives up on the first bad character: panic-mode recovery (§3.1.4)
-          deletes the offending characters and rescans, so the rest of the program is still
-          tokenized and the parser still gets a stream to work with. Playback stops at each error
-          step so you can read the state that produced it.
-        </Note>
-      )}
     </>
   );
 }
@@ -195,7 +179,7 @@ function DiagnosticList({ diagnostics }: { diagnostics: readonly Diagnostic[] })
   return (
     <ul className="flex flex-col gap-2">
       {diagnostics.map((d, i) => (
-        <li key={i} className="rounded-lg border border-err/40 bg-surface p-3">
+        <li key={i} className="border-l-2 border-err/50 py-1 pl-3">
           <p className="font-semibold text-ink">{d.message}</p>
           <p className="font-mono text-[11px] text-ink-faint">
             line {d.span.line}:{d.span.col}
@@ -235,9 +219,7 @@ export function ErrorsTab({
             {traceState.message}
           </Note>
         ) : (
-          <UnavailablePanel title="No scan trace" diagnostics={traceState.diagnostics}>
-            Falling back to the diagnostics the compilation reported.
-          </UnavailablePanel>
+          <UnavailablePanel title="No scan trace" diagnostics={traceState.diagnostics} />
         )}
         {diagnostics.length > 0 ? (
           <DiagnosticList diagnostics={diagnostics} />
@@ -252,7 +234,6 @@ export function ErrorsTab({
     <TraceSplit
       key={`errors:${compilationId}`}
       trace={traceState.trace}
-      title="Lexical errors"
       initialStep={initialStep}
       jumpTargets={[
         { label: 'error', predicate: (s) => s.event.kind === 'lexError' },

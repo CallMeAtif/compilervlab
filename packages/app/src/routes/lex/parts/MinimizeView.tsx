@@ -12,12 +12,13 @@
  * construction the worker runs — the minimize trace names states but does not
  * carry the transition table for singleton groups.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { clsx } from 'clsx';
 import { Scissors } from 'lucide-react';
 import { minimizeReducer, type MinimizeEvent, type MinimizeState } from '@lab/core/lex/reducers.js';
 import type { Dfa } from '@lab/core/lex/types.js';
 import { ElkGraph } from '../../../components/viz/ElkGraph';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import {
   VirtualTable,
   type VTableColumn,
@@ -27,7 +28,7 @@ import type { Stepper } from '../../../lib/useStepper';
 import { useLexTrace } from '../useLexTrace';
 import { dfaFor, type LexTokenClass } from '../tokenClasses';
 import { dfaGraph, isHeavyGraph, showSymbol } from '../graph';
-import { HeavyGate, LoadingPanel, Note, Panel, TraceSplit, UnavailablePanel } from './ui';
+import { HeavyGate, LoadingPanel, Note, Panel, Reveal, TraceSplit, UnavailablePanel } from './ui';
 import { AutomatonLegend, GroupSwatch, StatChips } from './bits';
 
 const DEAD = '∅';
@@ -54,12 +55,7 @@ function PartitionPanel({
   acceptOf: (id: string) => string | null;
 }) {
   if (state.partition.length === 0) {
-    return (
-      <p className="text-sm text-ink-muted">
-        The initial partition has not been formed yet — step forward to split the states into
-        nonaccepting and accepting groups.
-      </p>
-    );
+    return <p className="prose-note text-sm">Not partitioned yet. Step forward.</p>;
   }
   const splittingKey = splitting ? splitting.join(' ') : null;
   return (
@@ -71,8 +67,8 @@ function PartitionPanel({
           <li
             key={`${gi}:${group.join(',')}`}
             className={clsx(
-              'flex min-w-40 flex-col gap-1 rounded-md border px-2.5 py-2',
-              isSplitting ? 'border-accent bg-accent-soft' : 'border-line bg-raised',
+              'flex min-w-40 flex-col gap-1 border-l-2 py-1 pl-2.5',
+              isSplitting ? 'border-accent bg-accent-soft' : 'border-line-strong',
             )}
           >
             <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
@@ -104,7 +100,10 @@ function SignatureTable({
   signatures,
   alphabet,
   distinguishing,
+  controls,
 }: {
+  /** Transport, so the table stays steppable once it fills the screen. */
+  controls?: ReactNode;
   signatures: ReadonlyArray<{ state: string; row: ReadonlyArray<{ symbol: string; to: string; group: number }> }>;
   alphabet: readonly string[];
   distinguishing: string | null;
@@ -130,13 +129,7 @@ function SignatureTable({
   );
 
   if (signatures.length === 0) {
-    return (
-      <p className="text-sm text-ink-muted">
-        No group under examination. Turn on <span className="font-medium">micro steps</span> to see
-        each state's signature — the group its transition on every input symbol lands in — as it is
-        computed.
-      </p>
-    );
+    return <p className="prose-note text-sm">No group under examination. Turn on micro steps.</p>;
   }
 
   return (
@@ -146,12 +139,18 @@ function SignatureTable({
       cornerLabel="state"
       height={Math.min(320, 32 * (rows.length + 1) + 8)}
       aria-label="Signatures of the group under examination"
-      className="rounded-none border-0"
+      controls={controls}
     />
   );
 }
 
-function MinResultTable({ state }: { state: MinimizeState }) {
+function MinResultTable({
+  state,
+  controls,
+}: {
+  state: MinimizeState;
+  controls?: ReactNode;
+}) {
   const result = state.result;
   const columns = useMemo<VTableColumn[]>(
     () => [
@@ -179,12 +178,7 @@ function MinResultTable({ state }: { state: MinimizeState }) {
   }, [result]);
 
   if (!result) {
-    return (
-      <p className="text-sm text-ink-muted">
-        The minimum-state transition table is written once the partition reaches its fixpoint and
-        every group has chosen a representative.
-      </p>
-    );
+    return <p className="prose-note text-sm">Written at the fixpoint.</p>;
   }
   return (
     <VirtualTable
@@ -193,17 +187,15 @@ function MinResultTable({ state }: { state: MinimizeState }) {
       cornerLabel="state"
       height={Math.min(280, 32 * (rows.length + 1) + 8)}
       aria-label="Minimum-state DFA transition table"
-      className="rounded-none border-0"
+      controls={controls}
     />
   );
 }
 
 function MinimizeBody({
-  cls,
   stepper,
   dfa,
 }: {
-  cls: LexTokenClass;
   stepper: Stepper<MinimizeState, MinimizeEvent>;
   dfa: Dfa;
 }) {
@@ -292,60 +284,49 @@ function MinimizeBody({
       >
         <PartitionPanel state={state} splitting={splitting} acceptOf={acceptOf} />
         {e && e.kind === 'split' && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-accent bg-accent-soft px-3 py-2 text-sm text-ink">
+          <p className="mt-4 flex items-start gap-2 border-l-2 border-accent py-1 pl-3 text-sm text-ink">
             <Scissors aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <p>
-              Distinguishing symbol{' '}
-              <code className="rounded bg-surface px-1 font-mono">{showSymbol(e.symbol)}</code>:
-              members of <span className="font-mono">{`{${e.from.join(', ')}}`}</span> reach
-              different groups on it, so the group splits into{' '}
+            <span>
+              <code className="rounded bg-surface px-1 font-mono">{showSymbol(e.symbol)}</code>{' '}
+              splits <span className="font-mono">{`{${e.from.join(', ')}}`}</span> into{' '}
               {e.into.map((g, i) => (
                 <span key={i} className="font-mono">
-                  {i > 0 ? ' and ' : ''}
+                  {i > 0 ? ' ' : ''}
                   {`{${g.join(', ')}}`}
                 </span>
               ))}
-              .
-            </p>
-          </div>
+            </span>
+          </p>
         )}
         {state.deadState !== null && (
-          <p className="mt-3 text-xs text-ink-muted">
-            Algorithm 3.39 needs a transition on every symbol, so the dead state{' '}
-            <span className="font-mono">∅</span> (dashed in the graph) absorbs the{' '}
-            {missing.length} missing transitions. It is removed again once the fixpoint is reached.
+          <p className="prose-note mt-3 text-sm">
+            Dead state <span className="font-mono">∅</span> absorbs {missing.length} missing
+            transitions.
           </p>
         )}
       </Panel>
 
-      <Panel
-        title="Signatures of the group under examination"
-        subtitle="two states stay together iff every input symbol sends them into the same group of Π"
-        bodyClassName="p-0"
-      >
+      <Panel title="Signatures">
         <SignatureTable
           signatures={working?.signatures ?? []}
           alphabet={dfa.alphabet}
           distinguishing={e && e.kind === 'split' ? e.symbol : null}
+          controls={<FullscreenTransport stepper={stepper} />}
         />
       </Panel>
 
       <Panel
-        title="The DFA, coloured by group"
-        subtitle="the same swatch as the partition above; layout is fixed, only the swatches move"
-        actions={<AutomatonLegend kind="dfa" />}
-        bodyClassName="p-0"
+        title="DFA by group"
+        actions={
+          <Reveal label="key">
+            <AutomatonLegend kind="dfa" />
+          </Reveal>
+        }
       >
         <HeavyGate
           render={isHeavyGraph(graph)}
           title={`${dfa.states.length} DFA states and ${graph.edges.length} edges is a lot to draw`}
-          reason={
-            <p>
-              The <code className="font-mono">{cls.def.display}</code> DFA has {dfa.states.length}{' '}
-              states over {dfa.alphabet.length} symbols. The partition panel and the signature table
-              above tell the whole story without the drawing.
-            </p>
-          }
+          reason={<p>The partition and signature panels above carry the same story.</p>}
         >
           <ElkGraph
             nodes={graph.nodes}
@@ -353,7 +334,10 @@ function MinimizeBody({
             currentNodeIds={currentNodes}
             direction="RIGHT"
             height="24rem"
-            className="lex-graph rounded-none border-0"
+            // The group swatches are the whole point of this graph and they
+            // change every step, so fullscreen must stay steppable.
+            controls={<FullscreenTransport stepper={stepper} />}
+            className="lex-graph"
           />
         </HeavyGate>
       </Panel>
@@ -362,12 +346,11 @@ function MinimizeBody({
         title="Minimum-state DFA"
         subtitle={
           state.result
-            ? `${state.result.states.length} states after ${state.result.rounds} rounds`
+            ? `${state.result.states.length} states · ${state.result.rounds} rounds`
             : 'pending'
         }
-        bodyClassName="p-0"
       >
-        <MinResultTable state={state} />
+        <MinResultTable state={state} controls={<FullscreenTransport stepper={stepper} />} />
       </Panel>
     </>
   );
@@ -409,7 +392,6 @@ export function MinimizeView({
     <TraceSplit
       key={`minimize:${cls.index}`}
       trace={traceState.trace}
-      title={`Minimization · ${cls.def.name}`}
       initialStep={initialStep}
       jumpTargets={[
         { label: 'split', predicate: (s) => s.event.kind === 'split' },
@@ -418,7 +400,7 @@ export function MinimizeView({
         { label: 'final table', predicate: (s) => s.event.kind === 'finalTable' },
       ]}
     >
-      {(stepper) => <MinimizeBody cls={cls} stepper={stepper} dfa={dfa} />}
+      {(stepper) => <MinimizeBody stepper={stepper} dfa={dfa} />}
     </TraceSplit>
   );
 }

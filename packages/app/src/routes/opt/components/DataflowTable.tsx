@@ -31,95 +31,99 @@ export function DataflowTable({ state, blockIds, currentBlock, changed }: Datafl
   const rows = forward ? blockIds : [...blockIds].sort((a, b) => b - a);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-140 border-collapse text-left font-mono text-xs">
-        <caption className="sr-only">
-          IN and OUT sets per basic block for {state.name || 'the data-flow problem'}
-        </caption>
-        <thead>
-          <tr className="border-b border-line text-ink-muted">
-            <th scope="col" className="px-2 py-1.5 font-semibold">
-              Block
-            </th>
-            <th scope="col" className="px-2 py-1.5 font-semibold">
-              {genLabel}
-            </th>
-            <th scope="col" className="px-2 py-1.5 font-semibold">
-              {killLabel}
-            </th>
-            <th scope="col" className="px-2 py-1.5 font-semibold">
-              IN
-            </th>
-            <th scope="col" className="px-2 py-1.5 font-semibold">
-              OUT
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr className="border-b border-line/70 bg-raised/60">
-            <th scope="row" className="px-2 py-1.5 font-semibold text-ink-muted">
-              {blockName(boundaryId)}
-            </th>
-            <td className="px-2 py-1.5 text-ink-faint">—</td>
-            <td className="px-2 py-1.5 text-ink-faint">—</td>
-            <td className="px-2 py-1.5">
-              <SetText items={state.in[boundaryKey]} />
-            </td>
-            <td className="px-2 py-1.5">
-              <SetText items={state.out[boundaryKey]} />
-            </td>
-          </tr>
-          {rows.map((id) => {
-            const key = String(id);
-            const isCurrent = currentBlock === id;
-            return (
-              <tr
-                key={id}
-                className={clsx(
-                  'border-b border-line/50 align-top',
-                  isCurrent && 'bg-accent-soft shadow-[inset_2px_0_0_var(--accent)]',
-                )}
-              >
-                <th scope="row" className="px-2 py-1.5 font-semibold whitespace-nowrap">
-                  <span className="flex items-center gap-1">
-                    {isCurrent && <ChevronRight aria-hidden className="size-3 text-accent" />}
-                    {blockName(id)}
-                  </span>
-                  {isCurrent && (
-                    <span className="mt-0.5 block text-[10px] font-normal text-ink-muted">
-                      {changed === undefined
-                        ? 'recomputing'
-                        : changed
-                          ? 'changed'
-                          : 'unchanged'}
-                    </span>
-                  )}
-                </th>
-                <td className="px-2 py-1.5 text-ink-muted">
-                  <SetText items={state.gen[key]} />
-                </td>
-                <td className="px-2 py-1.5 text-ink-muted">
-                  <SetText items={state.kill[key]} />
-                </td>
-                <td className="px-2 py-1.5">
-                  <SetText items={state.in[key]} />
-                </td>
-                <td className="px-2 py-1.5">
-                  <SetText items={state.out[key]} />
-                </td>
-              </tr>
-            );
-          })}
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={5} className="px-2 py-6 text-center text-ink-faint">
-                The problem has not been set up yet — step forward.
+    <div>
+      <div className="artifact-scroll">
+        <table className="w-full min-w-140 border-collapse text-left font-mono text-xs">
+          <caption className="sr-only">
+            IN and OUT sets per basic block for {state.name || 'the data-flow problem'}
+          </caption>
+          <thead>
+            <tr className="border-b border-line text-2xs tracking-wide text-ink-faint uppercase">
+              <th scope="col" className="py-1.5 pr-3 pl-3 font-medium">
+                Block
+              </th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                {genLabel}
+              </th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                {killLabel}
+              </th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                IN
+              </th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                OUT
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* The boundary row is a definition, not data: italic label, no band. */}
+            <tr className="border-b border-line/60">
+              <th scope="row" className="py-1.5 pr-3 pl-3 font-semibold text-ink-faint">
+                {blockName(boundaryId)}
+              </th>
+              <td className="py-1.5 pr-3 text-ink-faint">—</td>
+              <td className="py-1.5 pr-3 text-ink-faint">—</td>
+              <td className="py-1.5 pr-3 text-ink-muted">
+                <SetText items={state.in[boundaryKey]} />
+              </td>
+              <td className="py-1.5 pr-3 text-ink-muted">
+                <SetText items={state.out[boundaryKey]} />
               </td>
             </tr>
-          )}
-        </tbody>
-      </table>
-      <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-muted">
+            {rows.map((id) => {
+              const key = String(id);
+              const isCurrent = currentBlock === id;
+              return (
+                <tr
+                  key={id}
+                  className={clsx(
+                    'border-b border-line/60 align-top',
+                    isCurrent && 'bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]',
+                  )}
+                >
+                  <th scope="row" className="py-1.5 pr-3 pl-3 font-semibold whitespace-nowrap">
+                    <span className="flex items-center gap-1">
+                      {isCurrent && <ChevronRight aria-hidden className="size-3 text-accent" />}
+                      {blockName(id)}
+                    </span>
+                    {isCurrent && (
+                      <span className="mt-0.5 block text-3xs font-normal text-ink-muted">
+                        {changed === undefined
+                          ? 'recomputing'
+                          : changed
+                            ? 'changed'
+                            : 'unchanged'}
+                      </span>
+                    )}
+                  </th>
+                  <td className="py-1.5 pr-3 text-ink-muted">
+                    <SetText items={state.gen[key]} />
+                  </td>
+                  <td className="py-1.5 pr-3 text-ink-muted">
+                    <SetText items={state.kill[key]} />
+                  </td>
+                  <td className="py-1.5 pr-3">
+                    <SetText items={state.in[key]} />
+                  </td>
+                  <td className="py-1.5 pr-3">
+                    <SetText items={state.out[key]} />
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-6 pl-3 text-ink-faint">
+                  Not set up yet. Step forward.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {/* A key and the transfer equation, set as mono data — not a sentence. */}
+      <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <Chip tone="neutral">
           {forward ? (
             <ArrowDown aria-hidden className="size-3" />
@@ -130,10 +134,8 @@ export function DataflowTable({ state, blockIds, currentBlock, changed }: Datafl
         </Chip>
         <Chip tone="neutral">meet = {state.meet === 'union' ? '∪' : '∩'}</Chip>
         <Chip tone="neutral">|U| = {state.domain.length}</Chip>
-        <span>
-          {forward
-            ? 'IN[B] is the meet over predecessors; OUT[B] = gen ∪ (IN − kill).'
-            : 'OUT[B] is the meet over successors; IN[B] = use ∪ (OUT − def).'}
+        <span className="font-mono text-2xs text-ink-faint">
+          {forward ? 'OUT[B] = gen ∪ (IN − kill)' : 'IN[B] = use ∪ (OUT − def)'}
         </span>
       </p>
     </div>

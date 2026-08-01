@@ -9,7 +9,7 @@
  * and `labels` — the panel derives nothing.
  */
 import { clsx } from 'clsx';
-import { ArrowRight, Check, SkipForward, Tag, X, Wrench } from 'lucide-react';
+import { ArrowRight, Check, Tag, X, Wrench } from 'lucide-react';
 import type { ActiveList, IrEvent, LabelEntry, ListRole } from '@lab/core/ir/ir-events.js';
 
 export type BackpatchOpKind = 'makelist' | 'merge' | 'backpatch';
@@ -23,9 +23,6 @@ export interface BackpatchPanelProps {
   onHoverList: (id: number | null) => void;
   onHoverInstr: (instr: number | null) => void;
   describeAst: (astNodeId: number) => string;
-  /** Seek to the next step of this kind (micro steps: StepControls' macro
-   *  filter hides them, so the panel offers its own jump-to). */
-  onJumpToOp: (kind: BackpatchOpKind) => void;
 }
 
 /** Role styling: colour AND border pattern AND glyph — never colour alone. */
@@ -73,10 +70,8 @@ function InstrBadge({
       onMouseEnter={() => onHoverInstr(instr)}
       onMouseLeave={() => onHoverInstr(null)}
       className={clsx(
-        'inline-flex h-5 min-w-6 items-center justify-center rounded px-1 font-mono text-[11px]',
-        tone === 'accent'
-          ? 'bg-accent text-on-accent'
-          : 'bg-raised text-ink-muted ring-1 ring-line',
+        'inline-flex h-5 min-w-6 items-center justify-center rounded-sm px-1 font-mono text-2xs',
+        tone === 'accent' ? 'bg-accent text-on-accent' : 'bg-raised text-ink-muted',
       )}
     >
       {instr}
@@ -101,10 +96,12 @@ function OpCallout({
     <div
       role="status"
       className={clsx(
-        'flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-xs',
+        // A status line, edged not boxed: the accent bar means "this is the
+        // step's focus"; a quiet ink bar means "context".
+        'flex flex-wrap items-center gap-2 border-l-2 py-1.5 pl-3 text-xs',
         listOp.kind === 'backpatch'
           ? 'border-accent bg-accent-soft text-ink'
-          : 'border-line bg-raised text-ink-muted',
+          : 'border-line-strong text-ink-muted',
       )}
     >
       <Wrench aria-hidden className="size-3.5 shrink-0 text-accent" />
@@ -125,17 +122,9 @@ function OpCallout({
           <span className="font-mono font-semibold text-accent">
             {listOp.targetLabel}
           </span>
-          <span className="text-ink-muted">
-            (instruction {listOp.targetInstr}) — targets filled in.
-          </span>
+          <span className="font-mono text-ink-muted">instr {listOp.targetInstr}</span>
         </>
-      ) : (
-        <span className="text-ink-muted">
-          {listOp.kind === 'makelist'
-            ? 'a new one-element list of unfilled jumps.'
-            : 'lists concatenated as translation moves up the tree.'}
-        </span>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -149,53 +138,22 @@ export function BackpatchPanel({
   onHoverList,
   onHoverInstr,
   describeAst,
-  onJumpToOp,
 }: BackpatchPanelProps) {
   return (
-    <section
-      aria-label="Backpatching state"
-      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3"
-    >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <h3 className="text-sm font-semibold tracking-tight text-ink">Backpatching</h3>
-        <span className="font-mono text-[11px] text-ink-faint">
-          §6.7.1 — a jump is emitted as <span className="text-ink-muted">goto _</span> and its
-          index parked on a list until the target exists
+    <section aria-label="Backpatching state" className="section mt-0 flex flex-col gap-4">
+      <header className="section-head mb-0">
+        <h2 className="section-title">Backpatching</h2>
+        <span className="section-meta">
+          §6.7.1 · {tempCount > 0 ? `t1 … t${tempCount}` : 'no temporaries'}
         </span>
-        <span className="flex-1" />
-        <span className="font-mono text-[11px] text-ink-faint">
-          {tempCount > 0 ? `t1 … t${tempCount}` : 'no temporaries yet'}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] text-ink-faint">
-          These are micro steps — jump to the next one:
-        </span>
-        {(['makelist', 'merge', 'backpatch'] as const).map((kind) => (
-          <button
-            key={kind}
-            type="button"
-            aria-label={`Jump to the next ${kind} step`}
-            onClick={() => onJumpToOp(kind)}
-            className="flex h-11 cursor-pointer items-center gap-1.5 rounded-md border border-control bg-surface px-3 font-mono text-xs text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
-          >
-            <SkipForward aria-hidden className="size-3.5 text-accent" />
-            {kind}
-          </button>
-        ))}
-      </div>
+      </header>
 
       {listOp && <OpCallout listOp={listOp} onHoverInstr={onHoverInstr} />}
 
-      <div className="flex flex-col gap-1.5">
-        <h4 className="text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
-          Open lists — jumps still waiting for a target
-        </h4>
+      <div className="flex flex-col gap-2">
+        <h3 className="subsection-title">Open lists</h3>
         {lists.length === 0 ? (
-          <p className="rounded-md border border-dashed border-line-strong px-3 py-2 text-xs text-ink-faint">
-            No open lists: every jump emitted so far already has its target.
-          </p>
+          <p className="text-sm text-ink-faint">No open lists.</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {lists.map((l) => {
@@ -213,23 +171,26 @@ export function BackpatchPanel({
                     onFocus={() => onHoverList(l.id)}
                     onBlur={() => onHoverList(null)}
                     className={clsx(
-                      'flex min-h-11 cursor-pointer flex-col items-start gap-1 rounded-md border-2 bg-surface px-2.5 py-1.5 text-left transition-colors duration-150',
+                      // A list IS an object with an identity, so it keeps its
+                      // 2px edge — and the edge's DASH PATTERN, not its colour,
+                      // is what names the role.
+                      'flex min-h-11 cursor-pointer flex-col items-start gap-1 rounded-sm border-2 px-2.5 py-1.5 text-left transition-colors duration-[var(--dur)]',
                       role.border,
                       hot && 'bg-raised',
                     )}
                   >
                     <span className="flex items-center gap-1.5">
                       <RoleGlyph glyph={role.glyph} className={clsx('size-3.5', role.text)} />
-                      <span className={clsx('font-mono text-[11px] font-semibold', role.text)}>
+                      <span className={clsx('font-mono text-2xs font-semibold', role.text)}>
                         {role.label}
                       </span>
-                      <span className="font-mono text-[11px] text-ink-faint">#{l.id}</span>
+                      <span className="font-mono text-2xs text-ink-faint">#{l.id}</span>
                     </span>
                     <span className="flex flex-wrap items-center gap-1">
                       {l.instrs.map((i) => (
                         <InstrBadge key={i} instr={i} onHoverInstr={onHoverInstr} />
                       ))}
-                      <span className="ml-1 text-[10px] text-ink-faint">
+                      <span className="ml-1 text-3xs text-ink-faint">
                         {describeAst(l.astNodeId)}
                       </span>
                     </span>
@@ -241,20 +202,18 @@ export function BackpatchPanel({
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <h4 className="text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
-          Label table — the marker instructions backpatching aims at (§6.7.2)
-        </h4>
+      <div className="flex flex-col gap-2">
+        <h3 className="subsection-title">Label table</h3>
         {labels.length === 0 ? (
-          <p className="text-xs text-ink-faint">No labels bound yet.</p>
+          <p className="text-sm text-ink-faint">No labels bound yet.</p>
         ) : (
-          <ul className="flex flex-wrap gap-1.5">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
             {labels.map((l: LabelEntry) => (
               <li key={`${l.name}-${l.instr}`}>
                 <span
                   onMouseEnter={() => onHoverInstr(l.instr)}
                   onMouseLeave={() => onHoverInstr(null)}
-                  className="inline-flex h-7 items-center gap-1.5 rounded-full border border-line bg-raised px-2 font-mono text-[11px] text-ink-muted"
+                  className="inline-flex h-7 items-center gap-1.5 font-mono text-2xs text-ink-muted"
                 >
                   <Tag aria-hidden className="size-3 text-accent" />
                   <span className="font-semibold text-ink">{l.name}</span>

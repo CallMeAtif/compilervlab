@@ -1,5 +1,8 @@
-/** Dragon Book citation chip: "§4.6.2 · Algorithm 4.53" with rule tooltip. */
-import { BookOpen } from 'lucide-react';
+/**
+ * Dragon Book citation, set as a FOOTNOTE REFERENCE: "§4.6.2 · Algorithm 4.53"
+ * in mono, marked by a dotted underline rather than a pill, with the full
+ * reference and the rule it names in the tooltip.
+ */
 import type { Citation } from '@lab/trace';
 import { Tooltip } from './ui/Tooltip';
 
@@ -15,8 +18,7 @@ export function CitationBadge({ cite }: { cite: Citation }) {
         </span>
       }
     >
-      <span className="inline-flex h-6 cursor-help items-center gap-1.5 rounded-full border border-line bg-raised px-2 font-mono text-2xs text-ink-muted">
-        <BookOpen aria-hidden className="size-3" />
+      <span className="cursor-help border-b border-dotted border-line-strong font-mono text-2xs whitespace-nowrap text-ink-faint transition-colors duration-[var(--dur-fast)] hover:border-accent hover:text-ink-muted">
         {label}
       </span>
     </Tooltip>

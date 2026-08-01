@@ -1,14 +1,19 @@
 /**
- * Persistent top bar: app title, six pipeline stage chips (status-driven),
- * theme toggle. Chips scroll horizontally under lg.
+ * Persistent top bar: the wordmark, the six-phase rail, the theme toggle.
+ *
+ * The rail is EDITORIAL NAVIGATION, not a row of buttons: each phase is its
+ * name set in mono small-caps with a one-character status mark beside it, and
+ * the phase you are reading is marked by an accent rule along the bottom of the
+ * bar plus a heavier label — never by an outline, and never by colour alone.
+ * The rail scrolls horizontally under lg; the theme toggle never scrolls away.
  */
 import { Link, NavLink } from 'react-router-dom';
-import { FlaskConical, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useCompilationStore, stageInfo } from '../store/compilation';
 import { PHASES } from '../lib/phases';
 import { useTheme } from '../lib/theme';
-import { STATUS_META, StatusIcon } from './StatusBadge';
+import { STATUS_META, StatusMark } from './StatusBadge';
 import { Tooltip } from './ui/Tooltip';
 
 function ThemeToggle() {
@@ -20,9 +25,11 @@ function ThemeToggle() {
         type="button"
         onClick={toggleTheme}
         aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-        className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-control bg-surface text-ink-muted transition-colors duration-[var(--dur-fast)] hover:bg-raised hover:text-ink"
+        // Icon-only: the glyph itself is the affordance (>= 3:1 in both
+        // themes), so the control needs no outline drawn around it.
+        className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm text-ink-muted transition-colors duration-[var(--dur-fast)] hover:bg-raised hover:text-ink"
       >
-        {dark ? <Sun aria-hidden className="size-5" /> : <Moon aria-hidden className="size-5" />}
+        {dark ? <Sun aria-hidden className="size-4.5" /> : <Moon aria-hidden className="size-4.5" />}
       </button>
     </Tooltip>
   );
@@ -37,7 +44,7 @@ export function TopBar() {
     <header className="sticky top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur">
       {/*
         Skip link — first tab stop on every page, so a keyboard user is not
-        forced through the six phase chips to reach the visualization. The
+        forced through the six phase links to reach the visualization. The
         <main> landmark in App.tsx carries `id="main" tabIndex={-1}`, so this is
         a plain fragment link that works with JavaScript disabled; the handler
         only adds the scroll-into-view Safari does not do for a -1 target.
@@ -60,22 +67,23 @@ export function TopBar() {
         order always matches reading order.
       */}
       <div className="mx-auto max-w-450 px-3 sm:px-5">
-        <div className="flex min-h-14 flex-col justify-center gap-1 py-1.5 lg:flex-row lg:items-center lg:gap-3 lg:py-0">
+        <div className="flex min-h-14 flex-col justify-center gap-0.5 py-1 lg:flex-row lg:items-center lg:gap-6 lg:py-0">
           <Link
             to="/"
-            className="flex shrink-0 items-center gap-2 self-start rounded-md px-1.5 py-2 font-semibold tracking-tight text-ink lg:self-auto"
+            className="flex shrink-0 items-baseline gap-2 self-start rounded-sm py-1.5 lg:self-auto"
           >
-            <FlaskConical aria-hidden className="size-5 text-accent" strokeWidth={2.25} />
-            <span className="hidden sm:inline">Compiler Virtual Lab</span>
-            <span className="sm:hidden">CVL</span>
+            <span className="font-serif text-base font-semibold tracking-tight text-ink">
+              <span className="hidden sm:inline">Compiler Virtual Lab</span>
+              <span className="sm:hidden">CVL</span>
+            </span>
           </Link>
 
-          <div className="flex min-w-0 items-center gap-2 lg:flex-1">
+          <div className="flex min-w-0 items-center gap-1 lg:flex-1 lg:justify-end">
             <nav
               aria-label="Compilation phases"
-              // px/py leave room for the 4px focus ring; the rail scrolls in x
-              // only, and the toggle beside it never scrolls out of reach.
-              className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overflow-y-hidden px-1 py-2 [overscroll-behavior-x:contain]"
+              // The rail scrolls in x only; 2px of vertical padding leaves room
+              // for the focus ring without clipping it.
+              className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-hidden py-0.5 [overscroll-behavior-x:contain]"
             >
               {PHASES.map((p, i) => {
                 const info = stageInfo(compilation, stale, p.phase, (c) =>
@@ -90,24 +98,40 @@ export function TopBar() {
                       aria-label={`Phase ${i + 1} of ${PHASES.length}: ${p.title}, ${detail}`}
                       className={({ isActive }) =>
                         clsx(
-                          'flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs whitespace-nowrap transition-colors duration-[var(--dur-fast)]',
-                          meta.chip,
-                          // Current page = ring AND weight, never colour alone.
-                          isActive
-                            ? 'font-semibold ring-2 ring-accent ring-offset-1 ring-offset-canvas'
-                            : 'font-medium hover:border-line-strong',
+                          // 44px tall (WCAG 2.5.5) with the label centred on the
+                          // bar's own baseline; no border, ever.
+                          'group relative flex h-11 shrink-0 cursor-pointer items-center gap-1.5 px-2.5 whitespace-nowrap transition-colors duration-[var(--dur-fast)] sm:px-3',
+                          isActive ? 'text-ink' : 'text-ink-muted hover:text-ink',
                         )
                       }
                     >
-                      <StatusIcon status={info.status} />
-                      {p.short}
-                      {info.errors > 0 && (
-                        <span
-                          aria-hidden
-                          className="ml-0.5 rounded-full bg-err px-1.5 text-3xs leading-4 font-semibold text-on-err"
-                        >
-                          {info.errors}
-                        </span>
+                      {({ isActive }) => (
+                        <>
+                          <span
+                            className={clsx(
+                              'font-mono text-2xs tracking-[0.13em] uppercase',
+                              isActive ? 'font-semibold' : 'font-medium',
+                            )}
+                          >
+                            {p.short}
+                          </span>
+                          <StatusMark
+                            status={info.status}
+                            count={info.errors > 0 ? info.errors : undefined}
+                          />
+                          {/* Current phase = an accent rule under the name.
+                              Hover shows the same rule in ink, so the shape is
+                              what changes, not only the colour. */}
+                          <span
+                            aria-hidden
+                            className={clsx(
+                              'absolute inset-x-1.5 bottom-0 h-0.5 transition-colors duration-[var(--dur-fast)]',
+                              isActive
+                                ? 'bg-accent'
+                                : 'bg-transparent group-hover:bg-line-strong',
+                            )}
+                          />
+                        </>
                       )}
                     </NavLink>
                   </Tooltip>
@@ -115,6 +139,7 @@ export function TopBar() {
               })}
             </nav>
 
+            <span aria-hidden className="h-5 w-px shrink-0 bg-line" />
             <ThemeToggle />
           </div>
         </div>

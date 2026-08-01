@@ -12,11 +12,21 @@ export type Theme = 'light' | 'dark';
 
 const STORAGE_KEY = 'cvl-theme';
 
+/**
+ * Dark is the default, unconditionally. This is a tool people read for long
+ * stretches and dark is the theme tuned first, so it is what a first-time
+ * reader gets regardless of what their OS prefers.
+ *
+ * The one thing that outranks it is an explicit choice this reader already
+ * made: the toggle persists to localStorage, and a stored value always wins.
+ * Light remains fully supported and equally contrast-checked — it is one click
+ * away and it sticks.
+ */
 function initialTheme(): Theme {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return 'dark';
 }
 
 interface ThemeContextValue {

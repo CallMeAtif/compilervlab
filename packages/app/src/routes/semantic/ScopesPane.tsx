@@ -1,7 +1,9 @@
 /**
- * The chained symbol tables of §2.7 (Fig. 2.36) drawn as nested boxes: a scope
- * box opens on `scopeEnter`, fills with symbol rows as declarations are
- * processed, and is marked closed on `scopeExit`. During a lookup the boxes the
+ * The chained symbol tables of §2.7 (Fig. 2.36) drawn as an OUTLINE — nested,
+ * indented regions ruled down the left margin, the way a textbook sets nested
+ * structure. A region opens on `scopeEnter`, fills with symbol rows as
+ * declarations are processed, and is marked closed on `scopeExit`. During a
+ * lookup the regions the
  * chain walk consults are numbered in consultation order, innermost outward,
  * and the walk ends in a hit (the found symbol row is emphasized) or a miss.
  */
@@ -51,29 +53,15 @@ export function ScopesPane({
   }
 
   if (state.scopes.length === 0) {
-    return (
-      <p className="px-3 py-6 text-sm text-ink-faint">
-        No scope is open yet. Step forward: the pass opens the global scope first, then one
-        scope per function and per block.
-      </p>
-    );
+    return <p className="prose-note p-4 text-sm">No scope open yet. Step forward.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-3 p-3">
-      {!lookup && (
-        <p className="flex items-start gap-1.5 rounded-md border border-dashed border-line px-2.5 py-1.5 text-[11px] leading-relaxed text-ink-muted">
-          <Search aria-hidden className="mt-0.5 size-3 shrink-0" />
-          Name resolution walks the chain one table at a time — those are micro steps. Turn on
-          “Micro steps”, or use the “lookup” jump chip, to watch a walk consult each scope
-          outward until it hits or the chain is exhausted.
-        </p>
-      )}
-
+    <div className="flex flex-col gap-4 p-4">
       {lookup && (
-        <div
+        <p
           role="status"
-          className="flex flex-wrap items-center gap-2 rounded-md border border-accent/50 bg-accent-soft px-2.5 py-1.5 text-xs text-ink"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 border-l-2 border-accent bg-accent-soft py-1 pl-2.5 text-xs text-ink"
         >
           <Search aria-hidden className="size-3.5 shrink-0" />
           <span className="font-mono font-semibold">{lookup.name}</span>
@@ -82,22 +70,22 @@ export function ScopesPane({
             {lookup.visits.length === 1 ? '' : 's'} consulted
           </span>
           {lookup.outcome === 'hit' && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-ok/50 px-1.5 py-0.5 font-medium text-ok">
+            <span className="inline-flex items-center gap-1 font-mono font-medium text-ok">
               <Check aria-hidden className="size-3" /> hit · symbol #{lookup.symbolId}
             </span>
           )}
           {lookup.outcome === 'miss' && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-err/50 px-1.5 py-0.5 font-medium text-err">
+            <span className="inline-flex items-center gap-1 font-mono font-medium text-err">
               <X aria-hidden className="size-3" /> miss · chain exhausted
             </span>
           )}
           {lookup.outcome === 'walking' && (
             <span className="text-ink-muted">walking outward…</span>
           )}
-        </div>
+        </p>
       )}
 
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-4">
         {forest.map((node) => (
           <ScopeBox
             key={node.scope.id}
@@ -147,34 +135,39 @@ function ScopeBox({
     .filter((s): s is SymbolEntry => s !== undefined);
 
   return (
+    /*
+     * An outline entry, not a card: a 2px rule down the left margin says
+     * "this region nests inside the one to my left". The rule is ALWAYS 2px —
+     * only its colour and dash pattern change with state — so stepping never
+     * shifts a single pixel of layout.
+     */
     <li
       className={clsx(
-        'rounded-lg border transition-[border-color,box-shadow] duration-200',
+        'border-l-2 pl-3 transition-[border-color,background-color] duration-[var(--dur)]',
         isCurrent
-          ? 'border-accent bg-accent-soft/40 shadow-[inset_0_0_0_1.5px_var(--accent)]'
+          ? 'border-accent bg-accent-soft/50'
           : isOpen
-            ? 'border-line-strong bg-surface'
-            : 'border-dashed border-line bg-surface opacity-75',
+            ? 'border-line-strong'
+            : 'border-dashed border-line opacity-75',
       )}
       aria-label={`${scopeTitle(scope)} — ${isCurrent ? 'current' : isOpen ? 'open' : 'closed'}`}
     >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-2.5 py-1.5">
-        <SquareDot aria-hidden className="size-3.5 shrink-0 text-ink-faint" />
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-line/70 pb-1">
         <span className="font-mono text-sm font-semibold text-ink">{scopeTitle(scope)}</span>
-        <span className="font-mono text-[11px] text-ink-faint">#{scope.id}</span>
-        <span className="font-mono text-[11px] text-ink-faint">
+        <span className="font-mono text-2xs text-ink-faint">#{scope.id}</span>
+        <span className="font-mono text-2xs text-ink-faint">
           line {scope.span.line} · {symbols.length} symbol{symbols.length === 1 ? '' : 's'}
         </span>
 
         {isCurrent && (
-          <span className="inline-flex h-5 items-center gap-1 rounded-full border border-accent px-1.5 text-[11px] font-medium text-ink">
-            <SquareDot aria-hidden className="size-3" />
+          <span className="inline-flex items-center gap-1 font-mono text-2xs font-semibold text-accent">
+            <SquareDot aria-hidden className="size-3 translate-y-0.5" />
             current
           </span>
         )}
         {!isOpen && (
-          <span className="inline-flex h-5 items-center gap-1 rounded-full border border-line px-1.5 text-[11px] text-ink-muted">
-            <CircleSlash aria-hidden className="size-3" />
+          <span className="inline-flex items-center gap-1 font-mono text-2xs text-ink-faint">
+            <CircleSlash aria-hidden className="size-3 translate-y-0.5" />
             closed
           </span>
         )}
@@ -184,27 +177,27 @@ function ScopeBox({
         {visit && (
           <span
             className={clsx(
-              'inline-flex h-5 items-center gap-1 rounded-full border px-1.5 font-mono text-[11px] font-medium',
+              'inline-flex items-center gap-1 font-mono text-2xs font-semibold',
               visit.found
-                ? 'border-ok/60 bg-ok-soft text-ok'
+                ? 'text-ok'
                 : visit.terminal && lookup?.outcome === 'miss'
-                  ? 'border-err/60 bg-err-soft text-err'
-                  : 'border-line-strong bg-raised text-ink-muted',
+                  ? 'text-err'
+                  : 'text-ink-muted',
             )}
             aria-label={`consulted ${visit.order}${visit.found ? ', found here' : ', not here'}`}
           >
             {visit.order}.
             {visit.found ? (
               <>
-                <Check aria-hidden className="size-3" /> found
+                <Check aria-hidden className="size-3 translate-y-0.5" /> found
               </>
             ) : visit.terminal && lookup?.outcome === 'miss' ? (
               <>
-                <X aria-hidden className="size-3" /> exhausted
+                <X aria-hidden className="size-3 translate-y-0.5" /> exhausted
               </>
             ) : (
               <>
-                <ArrowUp aria-hidden className="size-3" /> not here
+                <ArrowUp aria-hidden className="size-3 translate-y-0.5" /> not here
               </>
             )}
           </span>
@@ -212,7 +205,7 @@ function ScopeBox({
       </div>
 
       {symbols.length > 0 && (
-        <ul className="flex flex-col gap-0.5 border-t border-line/70 p-1.5">
+        <ul className="mt-1 flex flex-col">
           {symbols.map((sym) => {
             const isHit = lookup?.outcome === 'hit' && lookup.symbolId === sym.id;
             const isActive = activeSymbolId === sym.id;
@@ -224,14 +217,14 @@ function ScopeBox({
                   onClick={() => onSelectSymbol(sym)}
                   aria-label={`symbol ${sym.name}, declared at line ${sym.declSpan.line}`}
                   className={clsx(
-                    'flex min-h-11 w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-1 rounded-md border px-2 py-1 text-left transition-colors duration-200',
+                    'flex min-h-11 w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-1 border-l-2 px-2 py-1 text-left transition-colors duration-[var(--dur)]',
                     isHit
-                      ? 'border-ok bg-ok-soft shadow-[inset_0_0_0_1.5px_var(--ok)]'
+                      ? 'border-ok bg-ok-soft'
                       : isActive
                         ? 'border-accent bg-accent-soft'
                         : isSelected
                           ? 'border-line-strong bg-raised'
-                          : 'border-transparent hover:border-line hover:bg-raised',
+                          : 'border-transparent hover:bg-raised',
                   )}
                 >
                   {isHit && <Check aria-hidden className="size-3.5 shrink-0 text-ok" />}
@@ -239,7 +232,7 @@ function ScopeBox({
                   <TypeChip type={sym.type} />
                   <KindChip kind={sym.kind} />
                   <span className="flex-1" />
-                  <span className="font-mono text-[11px] text-ink-faint">
+                  <span className="font-mono text-2xs text-ink-faint">
                     #{sym.id} · line {sym.declSpan.line}
                   </span>
                 </button>
@@ -250,7 +243,7 @@ function ScopeBox({
       )}
 
       {node.children.length > 0 && (
-        <ul className="ml-3 flex flex-col gap-2 border-l border-line py-1.5 pr-1.5 pl-3">
+        <ul className="mt-3 ml-2 flex flex-col gap-4 pb-1">
           {node.children.map((child) => (
             <ScopeBox
               key={child.scope.id}

@@ -6,7 +6,7 @@
  */
 import type { ReactNode } from 'react';
 import { clsx } from 'clsx';
-import { Braces, CircleAlert, Loader2, TriangleAlert } from 'lucide-react';
+import { CircleAlert, Loader2, TriangleAlert } from 'lucide-react';
 import type { Diagnostic, Phase } from '@lab/core/common/types.js';
 import { CodeStrip } from '../../components/viz/CodeStrip';
 import { CompileCta } from '../../components/CompileCta';
@@ -34,30 +34,29 @@ export function IrStyles() {
   return <style>{IR_CSS}</style>;
 }
 
+/**
+ * A state is quiet prose, not a loud box: a serif heading and an explanation.
+ * An error keeps a status edge (a 2px rule down the left margin) so the tone
+ * is carried by a shape as well as by colour.
+ */
 function Frame({
   title,
-  icon,
   tone = 'neutral',
   children,
 }: {
   title: string;
-  icon: ReactNode;
   tone?: 'neutral' | 'error';
   children: ReactNode;
 }) {
   return (
     <section
       aria-label={title}
-      className={clsx(
-        'flex flex-col gap-3 rounded-lg border p-6',
-        tone === 'error' ? 'border-err/50 bg-err-soft' : 'border-dashed border-line-strong bg-surface',
-      )}
+      className={clsx('section mt-0', tone === 'error' && 'border-l-2 border-err pl-5')}
     >
-      <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-        {icon}
+      <h2 className={clsx('state-title', tone === 'error' && 'text-err')}>
         {title}
       </h2>
-      {children}
+      <div className="mt-3 flex flex-col gap-4">{children}</div>
     </section>
   );
 }
@@ -65,31 +64,14 @@ function Frame({
 /** Nothing compiled yet. */
 export function IrIdle({ source }: { source: string }) {
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
-      <Frame title="Compile a program to begin" icon={<Braces aria-hidden className="size-5 text-accent" />}>
-        <p className="max-w-2xl text-sm text-ink-muted">
-          Intermediate code generation translates the type-checked AST into three-address code
-          (Dragon Book §6.2–§6.9). Compile, and this view replays the translation step by step:
-          each AST node as it is entered, each quadruple as it is emitted, and every §6.7
-          backpatch that fills in a jump target.
-        </p>
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
+      <Frame title="Compile a program to begin">
         <CompileCta className="flex flex-col items-start gap-2" />
-        <ul className="grid gap-1 text-sm text-ink-muted sm:grid-cols-3">
-          <li className="rounded-md bg-raised px-3 py-2">
-            <span className="font-medium text-ink">Quadruples</span> — op · arg1 · arg2 · result
-          </li>
-          <li className="rounded-md bg-raised px-3 py-2">
-            <span className="font-medium text-ink">Triples</span> — values named by position
-          </li>
-          <li className="rounded-md bg-raised px-3 py-2">
-            <span className="font-medium text-ink">Indirect triples</span> — a listing of pointers
-          </li>
-        </ul>
       </Frame>
-      <aside className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold tracking-tight text-ink-muted">
-          Source waiting to be compiled
-        </h3>
+      <aside className="section mt-0">
+        <header className="section-head">
+          <h2 className="section-title">Source</h2>
+        </header>
         <CodeStrip source={source} maxHeight="24rem" />
       </aside>
     </div>
@@ -117,57 +99,45 @@ export function IrBlocked({
   const shown = errors.length > 0 ? errors : diagnostics;
   const spans = shown.map((d) => d.span);
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
-      <Frame
-        title="No intermediate code: an earlier phase stopped the pipeline"
-        tone="error"
-        icon={<CircleAlert aria-hidden className="size-5 text-err" />}
-      >
-        <p className="max-w-2xl text-sm text-ink">
-          Translation to three-address code runs only on a program that parsed and type-checked
-          cleanly — the generator indexes <span className="font-mono">SemanticInfo</span> for the
-          type and symbol of every node it visits, so a single unresolved name would make the
-          translation meaningless. Fix the diagnostics below and compile again.
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
+      <Frame title="An earlier phase stopped the pipeline" tone="error">
+        <p className="prose-note text-ink">
+          Translation needs a program that parsed and type-checked. Fix the diagnostics below
+          and compile again.
         </p>
         {shown.length === 0 ? (
-          <p className="text-sm text-ink-muted">
-            The worker returned no trace and no diagnostics — this usually means the program
-            declares no functions to translate.
-          </p>
+          <p className="prose-note">No diagnostics: the program declares no functions.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-4">
             {shown.map((d, i) => (
-              <li
-                key={`${d.phase}-${d.span.start}-${i}`}
-                className="rounded-md border border-line bg-surface p-3"
-              >
-                <div className="flex flex-wrap items-center gap-2">
+              <li key={`${d.phase}-${d.span.start}-${i}`} className="border-t border-line pt-2">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-2xs">
                   {d.severity === 'error' ? (
-                    <CircleAlert aria-hidden className="size-4 text-err" />
+                    <CircleAlert aria-hidden className="size-3.5 text-err" />
                   ) : (
-                    <TriangleAlert aria-hidden className="size-4 text-warn" />
+                    <TriangleAlert aria-hidden className="size-3.5 text-warn" />
                   )}
-                  <span className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
+                  <span className="tracking-wide text-ink-muted uppercase">
                     {PHASE_LABEL[d.phase]}
                   </span>
-                  <span className="font-mono text-[11px] text-ink-faint">
+                  <span className="text-ink-faint">
                     line {d.span.line}, col {d.span.col}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-ink">{d.message}</p>
+                <p className="mt-1 text-ink">{d.message}</p>
                 {d.rule && (
-                  <p className="mt-1 font-mono text-[11px] text-ink-muted">rule: {d.rule}</p>
+                  <p className="mt-1 font-mono text-2xs text-ink-muted">rule: {d.rule}</p>
                 )}
-                {d.hint && <p className="mt-1 text-xs text-ink-muted">{d.hint}</p>}
+                {d.hint && <p className="mt-1 text-sm text-ink-muted">{d.hint}</p>}
               </li>
             ))}
           </ul>
         )}
       </Frame>
-      <aside className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold tracking-tight text-ink-muted">
-          Where the pipeline stopped
-        </h3>
+      <aside className="section mt-0">
+        <header className="section-head">
+          <h2 className="section-title">Where the pipeline stopped</h2>
+        </header>
         <CodeStrip source={source} spans={spans} maxHeight="24rem" />
       </aside>
     </div>
@@ -177,15 +147,12 @@ export function IrBlocked({
 /** The worker itself failed (not a diagnostic). */
 export function IrFailed({ message }: { message: string }) {
   return (
-    <Frame
-      title="The trace could not be built"
-      tone="error"
-      icon={<CircleAlert aria-hidden className="size-5 text-err" />}
-    >
-      <p className="text-sm text-ink">
-        The compile worker refused the <span className="font-mono">ir.gen</span> request:
+    <Frame title="The trace could not be built" tone="error">
+      <p className="prose-note text-ink">
+        The compile worker refused <span className="font-mono text-xs">ir.gen</span>:
       </p>
-      <p className="rounded-md bg-surface p-3 font-mono text-xs text-err">{message}</p>
+      {/* A verbatim machine message is a code listing, so it earns a frame. */}
+      <p className="framed bg-code p-3 font-mono text-xs text-err">{message}</p>
     </Frame>
   );
 }
@@ -196,20 +163,20 @@ export function IrSkeleton() {
     <div
       role="status"
       aria-live="polite"
-      className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]"
+      className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]"
     >
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-sm text-ink-muted">
+      <div className="flex flex-col gap-6">
+        <p className="flex items-center gap-2 text-sm text-ink-muted">
           <Loader2 aria-hidden className="size-4 animate-spin text-accent" />
-          Translating the AST to three-address code in the worker…
+          Translating…
+        </p>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <div className="h-72 animate-pulse rounded-sm bg-raised motion-reduce:animate-none" />
+          <div className="h-72 animate-pulse rounded-sm bg-raised motion-reduce:animate-none" />
         </div>
-        <div className="grid gap-3 xl:grid-cols-2">
-          <div className="h-72 animate-pulse rounded-lg border border-line bg-raised" />
-          <div className="h-72 animate-pulse rounded-lg border border-line bg-raised" />
-        </div>
-        <div className="h-28 animate-pulse rounded-lg border border-line bg-raised" />
+        <div className="h-28 animate-pulse rounded-sm bg-raised motion-reduce:animate-none" />
       </div>
-      <div className="h-64 animate-pulse rounded-lg border border-line bg-raised" />
+      <div className="h-64 animate-pulse rounded-sm bg-raised motion-reduce:animate-none" />
     </div>
   );
 }

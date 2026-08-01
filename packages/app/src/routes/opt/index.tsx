@@ -29,10 +29,14 @@ import { NothingCompiled, Notice, UpstreamBlocked } from './components/OptStates
 import { AnalysisView } from './views/AnalysisView';
 import { PassView } from './views/PassView';
 import { PipelineView } from './views/PipelineView';
+import './opt.css';
 
 export default function OptPhaseRoute() {
+  // `nav={null}`: this route's ONE nav row is <ViewTabs/>, and inside the
+  // Passes view the pass rail is the pass selector. A `?algo=` tablist above
+  // them was a third row choosing what the rail already chooses.
   return (
-    <PhasePage phase="opt">
+    <PhasePage phase="opt" nav={null}>
       <OptPhase />
     </PhasePage>
   );
@@ -113,19 +117,20 @@ function OptPhase() {
   const cfg = fn ? cfgForFunction(optimized.cfgs, fn.name) : null;
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    <div className="flex min-w-0 flex-col">
       {stale && (
-        <Notice tone="warn" icon={<Clock aria-hidden className="size-4 shrink-0" />}>
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="flex-1">
-              The source changed since the last compile — every optimization trace below still
-              describes the previously compiled program.
-            </span>
+        <Notice
+          tone="warn"
+          icon={<Clock aria-hidden className="mt-0.5 size-4 shrink-0" />}
+          className="mb-6"
+        >
+          <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="flex-1">Stale: the source changed since this compile.</span>
             <button
               type="button"
               onClick={() => void compile()}
               disabled={compiling}
-              className="h-11 shrink-0 cursor-pointer rounded-md border border-warn/60 px-3 text-xs font-semibold text-warn transition-colors hover:bg-warn/10 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-11 shrink-0 cursor-pointer px-1 text-sm font-semibold text-warn underline decoration-warn/50 underline-offset-4 transition-colors hover:decoration-warn disabled:cursor-not-allowed disabled:opacity-50"
             >
               Recompile now
             </button>
@@ -133,56 +138,55 @@ function OptPhase() {
         </Notice>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <ViewTabs active={view.kind} onSelect={selectView} />
-      </div>
+      <ViewTabs active={view.kind} onSelect={selectView} />
 
+      {/* One band: the analysis choice and the function it runs on share a row. */}
       {view.kind === 'analysis' && (
-        <div className="flex flex-col gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1">
           <AnalysisPicker selected={view.analysis} onSelect={selectAnalysis} />
           <FunctionPicker
             functions={optimized.input.functions.map((f) => f.name)}
             selected={analysisFunction}
             onSelect={selectFunction}
+            label="fn"
           />
         </div>
       )}
 
-      {view.kind === 'pass' && (
-        <PassView
-          pass={view.pass}
-          source={source}
-          optimized={optimized}
-          stepperOptions={stepperOptions}
-          onSelectPass={selectPass}
-        />
-      )}
-
-      {view.kind === 'analysis' &&
-        (fn && cfg ? (
-          <AnalysisView
-            analysis={view.analysis}
+      <div className="mt-8 min-w-0">
+        {view.kind === 'pass' && (
+          <PassView
+            pass={view.pass}
             source={source}
-            fn={fn}
-            cfg={cfg}
+            optimized={optimized}
             stepperOptions={stepperOptions}
-            onSelectAnalysis={selectAnalysis}
+            onSelectPass={selectPass}
           />
-        ) : (
-          <Notice tone="warn">
-            The optimizer input has no function to analyse — the program contains no translated
-            function bodies.
-          </Notice>
-        ))}
+        )}
 
-      {view.kind === 'pipeline' && (
-        <PipelineView
-          source={source}
-          optimized={optimized}
-          stepperOptions={stepperOptions}
-          onSelectPass={selectPass}
-        />
-      )}
+        {view.kind === 'analysis' &&
+          (fn && cfg ? (
+            <AnalysisView
+              analysis={view.analysis}
+              source={source}
+              fn={fn}
+              cfg={cfg}
+              stepperOptions={stepperOptions}
+              onSelectAnalysis={selectAnalysis}
+            />
+          ) : (
+            <Notice tone="warn">No function to analyse.</Notice>
+          ))}
+
+        {view.kind === 'pipeline' && (
+          <PipelineView
+            source={source}
+            optimized={optimized}
+            stepperOptions={stepperOptions}
+            onSelectPass={selectPass}
+          />
+        )}
+      </div>
     </div>
   );
 }

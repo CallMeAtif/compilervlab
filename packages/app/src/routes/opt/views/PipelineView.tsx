@@ -17,6 +17,7 @@ import {
 import type { Trace } from '@lab/trace';
 import type { Stepper, UseStepperOptions } from '../../../lib/useStepper';
 import { DiffView } from '../../../components/DiffView';
+import { CitationBadge } from '../../../components/CitationBadge';
 import { PASS_LIST, PASS_META, type PassId } from '../lib/optModel';
 import { buildPassDiff, unchangedRows } from '../lib/passDiff';
 import { useOptTrace } from '../lib/useOptTrace';
@@ -51,40 +52,45 @@ export function PipelineView({
     (selected && functionNames.includes(selected) ? selected : null) ?? functionNames[0] ?? '';
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-      <Panel
-        title="The default optimization pipeline"
-        cite={{ section: '8.5', figureOrAlgo: '§9' }}
-        subtitle="Each pass runs on the previous pass's output; basic blocks and the flow graph are recomputed between passes."
-        bodyClassName="flex flex-col gap-3"
-      >
-        <p className="max-w-3xl text-sm text-ink-muted">
-          The trace starts by partitioning the input program into basic blocks and building its
-          flow graph (§8.4), then applies the six passes in order. Select a pass in the timeline
-          to open its own trace.
-        </p>
-        <FunctionPicker functions={functionNames} selected={selectedFn} onSelect={setSelected} />
-      </Panel>
+    <div className="flex min-w-0 flex-col">
+      {/* ONE band: title, citation, counts and the function picker on a row. */}
+      <header className="section-head">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <h2 className="section-title">Pipeline</h2>
+          <CitationBadge cite={{ section: '8.5', figureOrAlgo: '§9' }} />
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <span className="section-meta">6 passes</span>
+          <FunctionPicker
+            functions={functionNames}
+            selected={selectedFn}
+            onSelect={setSelected}
+            label="fn"
+          />
+        </div>
+      </header>
 
-      <TraceGate
-        load={load}
-        what="the whole optimization pipeline"
-        unavailableExplanation="The pipeline runs on the three-address code, so it needs a program that compiled through intermediate-code generation."
-      >
-        {(trace) => (
-          <SplitTraceView trace={trace} title="Pipeline" stepperOptions={stepperOptions}>
-            {(stepper) => (
-              <PipelineViz
-                stepper={stepper}
-                trace={trace}
-                optimized={optimized}
-                selectedFn={selectedFn}
-                onSelectPass={onSelectPass}
-              />
-            )}
-          </SplitTraceView>
-        )}
-      </TraceGate>
+      <div className="min-w-0">
+        <TraceGate
+          load={load}
+          what="the whole optimization pipeline"
+          unavailableExplanation="The pipeline needs a program that reached intermediate-code generation."
+        >
+          {(trace) => (
+            <SplitTraceView trace={trace} stepperOptions={stepperOptions}>
+              {(stepper) => (
+                <PipelineViz
+                  stepper={stepper}
+                  trace={trace}
+                  optimized={optimized}
+                  selectedFn={selectedFn}
+                  onSelectPass={onSelectPass}
+                />
+              )}
+            </SplitTraceView>
+          )}
+        </TraceGate>
+      </div>
     </div>
   );
 }
@@ -143,14 +149,16 @@ function PipelineViz({
     <>
       <Panel
         title="Pass timeline"
-        subtitle={
-          currentPassName
-            ? `Running ${currentPassName}${finished ? ' · finished' : ''}`
-            : 'Building basic blocks and the flow graph of the input program (§8.4)'
+        actions={
+          <span className="section-meta">
+            {currentPassName
+              ? `${currentPassName}${finished ? ' · finished' : ' · running'}`
+              : 'blocks + flow graph (§8.4)'}
+          </span>
         }
-        bodyClassName="flex flex-col gap-1.5"
+        bodyClassName="flex flex-col"
       >
-        {PASS_LIST.map((meta) => {
+        {PASS_LIST.map((meta, i) => {
           const seen = changesPerPass.has(meta.id);
           const isCurrent = currentPassName === meta.id && !finished;
           const done = seen && !isCurrent;
@@ -161,12 +169,15 @@ function PipelineViz({
               onClick={() => onSelectPass(meta.id)}
               aria-label={`Open the ${meta.label} trace`}
               className={clsx(
-                'flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-left transition-colors',
+                'flex min-h-11 cursor-pointer items-center gap-2.5 border-t border-line px-3 py-2 text-left transition-colors duration-[var(--dur-fast)] first:border-t-0',
                 isCurrent
-                  ? 'border-accent bg-accent-soft'
-                  : 'border-line hover:border-line-strong',
+                  ? 'bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]'
+                  : 'hover:bg-raised',
               )}
             >
+              <span className="w-4 shrink-0 font-mono type-code text-ink-faint tabular-nums">
+                {i + 1}
+              </span>
               {isCurrent ? (
                 <Loader aria-hidden className="size-4 shrink-0 text-accent" />
               ) : done ? (
@@ -174,9 +185,16 @@ function PipelineViz({
               ) : (
                 <CircleDashed aria-hidden className="size-4 shrink-0 text-ink-faint" />
               )}
-              <span className="font-mono text-xs font-semibold text-ink">{meta.short}</span>
-              <span className="hidden text-xs text-ink-muted sm:inline">{meta.label}</span>
-              <span className="ml-auto flex items-center gap-1.5">
+              <span
+                className={clsx(
+                  'font-mono text-xs',
+                  isCurrent ? 'font-semibold text-ink' : 'text-ink',
+                )}
+              >
+                {meta.short}
+              </span>
+              <span className="hidden text-sm text-ink-muted sm:inline">{meta.label}</span>
+              <span className="ml-auto flex shrink-0 items-center gap-1.5">
                 <Chip tone={seen ? 'accent' : 'neutral'}>
                   {seen ? `${changesPerPass.get(meta.id) ?? 0} rewrites` : 'pending'}
                 </Chip>
@@ -187,8 +205,7 @@ function PipelineViz({
       </Panel>
 
       <Panel
-        title={`Cumulative effect on ${selectedFn}()`}
-        subtitle="Optimizer input compared with the program as of this step."
+        title={`Cumulative diff · ${selectedFn}()`}
         actions={
           <div className="flex items-center gap-1.5">
             <Chip tone={diff.changed > 0 ? 'warn' : 'neutral'}>~ {diff.changed}</Chip>
@@ -196,39 +213,31 @@ function PipelineViz({
             <Chip tone={diff.removed > 0 ? 'err' : 'neutral'}>− {diff.removed}</Chip>
           </div>
         }
-        bodyClassName="p-0"
       >
         <DiffView
           rows={diff.rows}
           beforeLabel="TAC in"
           afterLabel="At this step"
-          className="rounded-none border-0"
+          className="diff-editorial"
         />
       </Panel>
 
       {passStates.length === 0 && (
-        <Notice tone="info">
-          Nothing has been rewritten yet: the pipeline first finds the leaders of every function
-          and builds the flow graphs the passes will analyse (§8.4.1, §8.4.3). Those steps are in
-          the trace — step forward to watch them.
-        </Notice>
+        <Notice tone="info">Blocks and flow graphs first. Step forward.</Notice>
       )}
 
       {activePass && activePass.pass && (
         <Panel
-          title={`Now applying: ${PASS_META[activePass.pass as PassId]?.label ?? activePass.pass}`}
+          title={PASS_META[activePass.pass as PassId]?.label ?? activePass.pass}
           cite={PASS_META[activePass.pass as PassId]?.citation}
-          bodyClassName="flex flex-col gap-2"
+          actions={<span className="section-meta">applying</span>}
         >
-          <p className="text-sm text-ink-muted">
-            {PASS_META[activePass.pass as PassId]?.blurb ?? ''}
-          </p>
           <button
             type="button"
             onClick={() => onSelectPass(activePass.pass as PassId)}
-            className="flex h-11 w-fit cursor-pointer items-center rounded-md border border-control px-3 text-xs font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+            className="flex h-11 w-fit cursor-pointer items-center text-sm font-medium text-accent underline decoration-accent/40 underline-offset-4 transition-colors hover:decoration-accent"
           >
-            Open this pass on its own, with its analysis
+            Open this pass on its own →
           </button>
         </Panel>
       )}

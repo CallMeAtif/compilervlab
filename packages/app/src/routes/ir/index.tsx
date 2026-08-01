@@ -46,9 +46,9 @@ function representationOf(algo: string | null): IrRepresentation {
 
 /**
  * The landmarks of a syntax-directed translation (§6.4–§6.7), in the shared
- * StepControls "Jump to…" menu. The backpatching panel keeps its own
- * makelist/merge/backpatch shortcuts: those are scoped to the function it is
- * showing, which a global menu entry cannot express.
+ * StepControls "Jump to…" menu — the ONE place secondary controls live. The
+ * backpatch panel used to repeat makelist / merge / backpatch as a chip row of
+ * its own.
  */
 const IR_JUMPS: ReadonlyArray<JumpTarget<IrEvent>> = [
   {
@@ -65,6 +65,11 @@ const IR_JUMPS: ReadonlyArray<JumpTarget<IrEvent>> = [
     label: 'Next makelist',
     hint: 'one-element list of jumps with no target yet (§6.7.1)',
     predicate: (s) => s.event.kind === 'makelist',
+  },
+  {
+    label: 'Next merge',
+    hint: 'two jump lists concatenated (§6.7.1)',
+    predicate: (s) => s.event.kind === 'merge',
   },
   {
     label: 'Next backpatch',
@@ -125,10 +130,6 @@ export function IrPhaseView() {
     () => ({ initialIndex: initialStepRef.current, onIndexChange }),
     [onIndexChange],
   );
-  const onRepresentationChange = useCallback(
-    (r: IrRepresentation) => paramsRef.current({ algo: r }),
-    [],
-  );
   const onSelectFunc = useCallback(
     (name: string | null) => paramsRef.current({ pass: name }),
     [],
@@ -145,16 +146,15 @@ export function IrPhaseView() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-8">
       <IrStyles />
 
       {stale && (
         <p
           role="status"
-          className="rounded-lg border border-dashed border-warn/60 bg-warn-soft px-3 py-2 text-sm text-warn"
+          className="border-l-2 border-dashed border-warn pl-3 text-sm text-warn"
         >
-          The editor source has changed since this compilation — you are stepping through the
-          translation of the program that was last compiled.
+          Source edited since this compilation. Compile to refresh.
         </p>
       )}
 
@@ -165,7 +165,6 @@ export function IrPhaseView() {
         symbols={compilation?.semantic?.symbols ?? []}
         source={source}
         representation={representation}
-        onRepresentationChange={onRepresentationChange}
         selectedFunc={pass}
         onSelectFunc={onSelectFunc}
       />
@@ -181,7 +180,6 @@ function IrReady({
   symbols,
   source,
   representation,
-  onRepresentationChange,
   selectedFunc,
   onSelectFunc,
 }: {
@@ -191,14 +189,13 @@ function IrReady({
   symbols: readonly SymbolEntry[];
   source: string | null;
   representation: IrRepresentation;
-  onRepresentationChange: (r: IrRepresentation) => void;
   selectedFunc: string | null;
   onSelectFunc: (name: string | null) => void;
 }) {
   const stepper = useStepper<IrGenState, IrEvent>(trace, stepperOptions);
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
       <div className="min-w-0">
         {ast && (
           <IrWorkbench
@@ -206,7 +203,6 @@ function IrReady({
             ast={ast}
             symbols={symbols}
             representation={representation}
-            onRepresentationChange={onRepresentationChange}
             selectedFunc={selectedFunc}
             onSelectFunc={onSelectFunc}
           />
@@ -215,7 +211,6 @@ function IrReady({
 
       <TracePanel
         stepper={stepper}
-        title="Syntax-directed translation — §6.4, §6.6, §6.7"
         className="min-w-0"
         jumpTargets={IR_JUMPS}
       >

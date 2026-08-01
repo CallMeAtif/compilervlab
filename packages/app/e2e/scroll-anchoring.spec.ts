@@ -33,8 +33,13 @@ test.describe('playback and scroll position', () => {
     // The reader scrolls down to the token stream...
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const parked = await page.evaluate(() => window.scrollY);
+    // The page must have somewhere to scroll TO, and the park has to sit far
+    // enough from the top that a yank back to the source panel would clear the
+    // 40px tolerance asserted below. The editorial cut shortened every phase
+    // page, so this floor is stated in terms of that tolerance, not a round
+    // number that quietly depended on how much chrome the header carried.
     expect(parked, 'page must be tall enough to scroll for this test to mean anything')
-      .toBeGreaterThan(100);
+      .toBeGreaterThan(50);
 
     // ...and keeps watching several more steps land.
     const before = Number(await scrubber.getAttribute('aria-valuenow'));

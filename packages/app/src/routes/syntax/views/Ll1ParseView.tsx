@@ -14,6 +14,7 @@ import {
   type LL1ParseTreeNode,
 } from '@lab/core/grammar/ll1-parse.js';
 import { useStepper } from '../../../lib/useStepper';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useTrace } from '../lib/useTrace';
 import type { ViewContext } from '../lib/view';
 import { GrammarRail, productionRefs } from '../components/GrammarRail';
@@ -102,13 +103,13 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<LL1ParseState, L
           <Panel
             title="Parse tree"
             subtitle={`${count} node${count === 1 ? '' : 's'} so far`}
-            bodyClassName="p-2"
-          >
+                      >
             <TreePanel
               root={root}
               nodeCount={count}
               currentIds={currentIds}
-              emptyLabel="The tree starts as the single start-symbol node."
+              emptyLabel="Step forward to expand the start symbol."
+              controls={<FullscreenTransport stepper={stepper} />}
             />
           </Panel>
         </>
@@ -123,8 +124,8 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<LL1ParseState, L
             { label: 'error', pred: (s) => s.event.kind === 'll1p.error' },
           ]}
         >
-          <Panel title="Configuration" bodyClassName="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-1.5">
+          <Panel title="Configuration" bodyClassName="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1">
               <Stat label="top of stack" value={stackTop?.sym ?? '—'} />
               <Stat
                 label="lookahead"
@@ -163,8 +164,7 @@ function Ready({ ctx, trace }: { ctx: ViewContext; trace: Trace<LL1ParseState, L
             )}
             {state.status === 'accepted' && (
               <Note tone="info" title="Accepted">
-                The stack was emptied down to $ exactly when the input ran out: the sentence has a
-                leftmost derivation, and the tree beside this panel is it.
+                Stack and input hit $ together. The tree is the leftmost derivation.
               </Note>
             )}
           </Panel>

@@ -10,11 +10,17 @@
  */
 import { useCallback, useMemo, useState, type MouseEvent, type FocusEvent } from 'react';
 import { clsx } from 'clsx';
-import { Braces, Crosshair, Radio } from 'lucide-react';
+import { Crosshair, Radio } from 'lucide-react';
 import type { Ast, FuncDefNode } from '@lab/core/ast/types.js';
 import type { SymbolEntry } from '@lab/core/sem/types.js';
 import type { ActiveList, IrEvent, IrGenState } from '@lab/core/ir/ir-events.js';
 import { TidyTree } from '../../components/viz/TidyTree';
+import {
+  FullscreenBody,
+  FullscreenToggle,
+  FullscreenTransport,
+} from '../../components/Fullscreen';
+import { useFullscreen } from '../../lib/useFullscreen';
 import type { Stepper } from '../../lib/useStepper';
 import { buildFunctionTree, decodeAstId, describeAstNode } from './ast-tree';
 import { useIrHighlight } from './provenance';
@@ -23,7 +29,8 @@ import {
   REPRESENTATIONS,
   type IrRepresentation,
 } from './RepresentationView';
-import { BackpatchPanel, type BackpatchOpKind } from './BackpatchPanel';
+import { BackpatchPanel } from './BackpatchPanel';
+import { Reveal } from './parts';
 
 export interface IrWorkbenchProps {
   stepper: Stepper<IrGenState, IrEvent>;
@@ -31,7 +38,6 @@ export interface IrWorkbenchProps {
   /** Symbol table, for naming the globals the translation collected first. */
   symbols: readonly SymbolEntry[];
   representation: IrRepresentation;
-  onRepresentationChange: (r: IrRepresentation) => void;
   /** Explicitly selected function (?pass=), or null to follow the trace. */
   selectedFunc: string | null;
   onSelectFunc: (name: string | null) => void;
@@ -39,16 +45,31 @@ export interface IrWorkbenchProps {
 
 const EMPTY_LISTS: readonly ActiveList[] = [];
 
+/**
+ * Editorial tabs. Quiet text on a shared hairline; the selected one is bolder
+ * ink with an accent rule drawn ON that hairline as an ::after bar — so
+ * selecting a tab changes no box's height, and the emphasis is a SHAPE (a rule
+ * plus weight) rather than colour alone. 44px tall.
+ */
+const TAB =
+  'relative flex h-11 cursor-pointer items-baseline gap-x-2 px-0.5 pt-3 text-[15px] transition-colors duration-[var(--dur-fast)] after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:content-[""]';
+const TAB_ON = 'font-semibold text-ink after:bg-accent';
+const TAB_OFF = 'text-ink-muted after:bg-transparent hover:text-ink';
+
 export function IrWorkbench({
   stepper,
   ast,
   symbols,
   representation,
-  onRepresentationChange,
   selectedFunc,
   onSelectFunc,
 }: IrWorkbenchProps) {
   const state = stepper.state;
+
+  // The TAC listing is not a canvas, so its toggle lives in the section head
+  // rather than floating over the first instruction row (see components/Fullscreen).
+  const tacFs = useFullscreen();
+  const transport = <FullscreenTransport stepper={stepper} />;
 
   const funcDefs = useMemo(
     () => ast.root.decls.filter((d): d is FuncDefNode => d.kind === 'FuncDef'),
@@ -126,16 +147,6 @@ export function IrWorkbench({
 
   const describeAst = useCallback((id: number) => describeAstNode(ast.nodes[id]), [ast]);
 
-  const jumpToOp = useCallback(
-    (kind: BackpatchOpKind) => {
-      stepper.jumpToNextMatching(
-        (s) =>
-          s.event.kind === kind &&
-          (activeName === null || !('func' in s.event) || s.event.func === activeName),
-      );
-    },
-    [stepper, activeName],
-  );
 
   // TidyTree exposes no per-node callbacks; it does render `kind` as data-kind,
   // where ast-tree.ts encoded the node id. Delegate hover/focus off that.
@@ -152,30 +163,31 @@ export function IrWorkbench({
     return state.globals.map((id) => byId.get(id) ?? `sym${id}`);
   }, [symbols, state.globals]);
 
+  const active = REPRESENTATIONS.find((r) => r.id === representation);
+
   return (
-    <div className="flex min-w-0 flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-8">
       {globalNames.length > 0 && (
-        <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
-          <span className="font-medium">Globals (§6.2.1)</span>
+        <p className="flex flex-wrap items-baseline gap-x-2 font-mono text-2xs">
+          <span className="group-label">Globals</span>
           {globalNames.map((n) => (
-            <span
-              key={n}
-              className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-ink"
-            >
+            <span key={n} className="text-ink">
               {n}
             </span>
           ))}
-          <span className="text-ink-faint">
-            — addressable from every function; their initializers are not translated.
-          </span>
+          <span className="text-ink-faint">§6.2.1</span>
         </p>
       )}
 
-      {/* ── function selector ────────────────────────────────────────────── */}
+      {/* ── function selector: editorial tabs, ruled, active underlined ──── */}
       {funcDefs.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-ink-muted">Function</span>
-          <div role="tablist" aria-label="TAC function" className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-end gap-x-4">
+          <span className="group-label pb-2">Function</span>
+          <div
+            role="tablist"
+            aria-label="TAC function"
+            className="flex flex-1 flex-wrap items-stretch gap-x-5 border-b border-line"
+          >
             {funcDefs.map((f) => {
               const done = state.functions.some((x) => x.name === f.name);
               const selected = f.name === activeName;
@@ -186,15 +198,10 @@ export function IrWorkbench({
                   role="tab"
                   aria-selected={selected}
                   onClick={() => onSelectFunc(f.name)}
-                  className={clsx(
-                    'flex h-11 cursor-pointer items-center gap-2 rounded-md border px-3 font-mono text-xs transition-colors',
-                    selected
-                      ? 'border-accent bg-accent-soft text-ink'
-                      : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
-                  )}
+                  className={clsx(TAB, selected ? TAB_ON : TAB_OFF)}
                 >
-                  {f.name}()
-                  <span className={clsx('text-[10px]', done ? 'text-ink-faint' : 'text-warn')}>
+                  <span className="font-mono">{f.name}()</span>
+                  <span className={clsx('font-mono text-2xs', done ? 'text-ink-faint' : 'text-warn')}>
                     {done
                       ? `${state.functions.find((x) => x.name === f.name)?.quads.length ?? 0} quads`
                       : 'not translated yet'}
@@ -207,7 +214,7 @@ export function IrWorkbench({
             <button
               type="button"
               onClick={() => onSelectFunc(null)}
-              className="flex h-11 cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-line-strong px-3 text-xs text-ink-muted hover:text-ink"
+              className="flex h-11 cursor-pointer items-center gap-1.5 text-sm text-ink-muted underline decoration-dashed decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent"
             >
               <Radio aria-hidden className="size-3.5 text-accent" />
               Trace is in {traceFunc}() — follow it
@@ -216,22 +223,29 @@ export function IrWorkbench({
         </div>
       )}
 
-      <div className="grid min-w-0 gap-3 xl:grid-cols-2">
+      <div className="grid min-w-0 items-start gap-8 xl:grid-cols-2">
         {/* ── AST ────────────────────────────────────────────────────────── */}
-        <section aria-label="Abstract syntax tree" className="flex min-w-0 flex-col gap-1.5">
-          <header className="flex flex-wrap items-baseline gap-x-2">
-            <h3 className="text-sm font-semibold tracking-tight text-ink">
-              Abstract syntax tree
-            </h3>
-            <span className="font-mono text-[11px] text-ink-faint">
-              {activeName ? `${activeName}()` : '—'}
-            </span>
-            <span className="flex-1" />
-            <span className="flex items-center gap-1 font-mono text-[11px] text-accent">
-              <Crosshair aria-hidden className="size-3" />
-              {state.currentAstNode !== null
-                ? describeAst(state.currentAstNode)
-                : 'not translating'}
+        <section aria-label="Abstract syntax tree" className="section mt-0 flex min-w-0 flex-col">
+          <header className="section-head">
+            <h2 className="section-title">Abstract syntax tree</h2>
+            <span className="flex flex-wrap items-baseline gap-x-4">
+              <span className="section-meta flex items-center gap-x-3">
+                <span>{activeName ? `${activeName}()` : '—'}</span>
+                <span className="flex items-center gap-1 text-accent">
+                  <Crosshair aria-hidden className="size-3" />
+                  {state.currentAstNode !== null
+                    ? describeAst(state.currentAstNode)
+                    : 'not translating'}
+                </span>
+              </span>
+              <Reveal label="key">
+                <ul className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-2xs text-ink-faint">
+                  <li>double ring = being translated</li>
+                  <li>filled dot = visited</li>
+                  <li>hover = instructions it emitted</li>
+                  <li>click = collapse subtree</li>
+                </ul>
+              </Reveal>
             </span>
           </header>
           {tree ? (
@@ -245,83 +259,52 @@ export function IrWorkbench({
                 root={tree}
                 currentIds={currentIds}
                 visitedIds={highlight.visitedAstIds}
+                controls={transport}
                 className="max-h-[26rem]"
               />
             </div>
           ) : (
-            <p className="rounded-lg border border-dashed border-line-strong p-6 text-center text-sm text-ink-faint">
-              This program declares no functions, so there is nothing to translate.
-            </p>
+            <p className="prose-note text-sm">No functions to translate.</p>
           )}
-          <p className="text-[11px] text-ink-faint">
-            Double ring = node being translated · filled dot = already visited · click a node
-            with children to collapse it. Hover a node to light up the instructions it emitted.
-          </p>
         </section>
 
         {/* ── representations ────────────────────────────────────────────── */}
-        <section aria-label="Three-address code" className="flex min-w-0 flex-col gap-1.5">
-          <header className="flex flex-wrap items-center gap-2">
-            <h3 className="flex items-center gap-1.5 text-sm font-semibold tracking-tight text-ink">
-              <Braces aria-hidden className="size-4 text-accent" />
-              Three-address code
-            </h3>
-            <span className="flex-1" />
-            <div
-              role="tablist"
-              aria-label="TAC representation"
-              className="flex flex-wrap gap-1.5"
-            >
-              {REPRESENTATIONS.map((r) => {
-                const selected = r.id === representation;
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => onRepresentationChange(r.id)}
-                    className={clsx(
-                      'h-11 cursor-pointer rounded-md border px-3 text-xs font-medium transition-colors',
-                      selected
-                        ? 'border-accent bg-accent-soft text-ink'
-                        : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
-                    )}
-                  >
-                    {r.label}
-                  </button>
-                );
-              })}
-            </div>
+        {/*
+          NO second tab row here. The three representations are the phase's
+          ?algo= values, so the header tablist at the top of the page already
+          selects them; rendering the identical strip again 150px lower doubled
+          the tab stops and made one page look like two. The head names the
+          region, the meta cites it, and the prose says which form is showing.
+        */}
+        <section aria-label="Three-address code" className="section mt-0 flex min-w-0 flex-col">
+          <header className="section-head">
+            <h2 className="section-title">Three-address code</h2>
+            <span className="flex shrink-0 items-center gap-1.5">
+              {/* The form is named once, in the head. What distinguishes the
+                  three is what stepping shows — so the definition is a
+                  disclosure, not a paragraph standing over the listing. */}
+              <Reveal label={`${active?.label ?? ''} · ${active?.cite ?? ''}`}>
+                <p className="prose-note text-sm">{active?.hint}</p>
+              </Reveal>
+              <FullscreenToggle fs={tacFs} label="the three-address code" />
+            </span>
           </header>
 
-          <p className="rounded-md bg-raised px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
-            <span className="font-mono font-semibold text-ink">
-              {REPRESENTATIONS.find((r) => r.id === representation)?.cite}
-            </span>{' '}
-            {REPRESENTATIONS.find((r) => r.id === representation)?.hint}
-            {representation !== 'quads' && (
-              <>
-                {' '}
-                Derived live from the same quadruples — nothing is stored twice; the{' '}
-                <span className="font-mono">from quad</span> link is the provenance back to the
-                canonical row.
-              </>
-            )}
-          </p>
-
-          <RepresentationView
-            representation={representation}
-            fn={fnState}
-            emitted={highlight.emitted}
-            patched={highlight.patched}
-            linkedInstrs={linkedInstrs}
-            listedInstrs={listedInstrs}
-            pendingLists={pendingLists}
-            pinnedInstr={pinnedInstr}
-            onHoverInstr={setHoverInstr}
-            onPinInstr={setPinnedInstr}
-          />
+          <FullscreenBody fs={tacFs} controls={transport}>
+            <RepresentationView
+              representation={representation}
+              fn={fnState}
+              emitted={highlight.emitted}
+              patched={highlight.patched}
+              linkedInstrs={linkedInstrs}
+              listedInstrs={listedInstrs}
+              pendingLists={pendingLists}
+              pinnedInstr={pinnedInstr}
+              onHoverInstr={setHoverInstr}
+              onPinInstr={setPinnedInstr}
+              expanded={tacFs.isFullscreen}
+            />
+          </FullscreenBody>
         </section>
       </div>
 
@@ -336,7 +319,6 @@ export function IrWorkbench({
         onHoverList={setHoveredListId}
         onHoverInstr={setHoverInstr}
         describeAst={describeAst}
-        onJumpToOp={jumpToOp}
       />
     </div>
   );

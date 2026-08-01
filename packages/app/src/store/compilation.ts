@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import type { Compilation, Diagnostic, Phase } from '@lab/core';
 import { getCompilerClient, type PipelineInfo } from '../worker/api';
-import { DEFAULT_EXAMPLE_ID, exampleById } from '../examples';
+import { CUSTOM_ID, DEFAULT_EXAMPLE_ID, exampleById, exampleBySource } from '../examples';
 
 export interface CompilationStore {
   source: string;
@@ -38,6 +38,9 @@ export const useCompilationStore = create<CompilationStore>((set, get) => ({
   setSource: (source) =>
     set((s) => ({
       source,
+      // Typing over an example makes it your program, not that example — the
+      // picker must stop naming it or the UI is lying about what will compile.
+      selectedExample: exampleBySource(source)?.id ?? CUSTOM_ID,
       stale: s.compilation !== null && source !== s.compilation.source,
     })),
 

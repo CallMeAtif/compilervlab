@@ -117,10 +117,9 @@ export function CodeStrip({
     <div
       role="group"
       aria-label={label}
-      className={clsx(
-        'overflow-hidden rounded-lg border border-line bg-code text-sm',
-        className,
-      )}
+      // A listing is one of the artifacts that earns a border (`.framed`), with
+      // the code sheet inside it.
+      className={clsx('framed overflow-hidden bg-code text-sm', className)}
       style={{ maxHeight }}
     >
       <CodeMirror

@@ -9,7 +9,7 @@
  * would make the automaton unreadable at LALR sizes, so it lives in the node’s
  * title and in the item-set panel beside the graph.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Network } from 'lucide-react';
 import { ElkGraph, type ElkGraphEdge, type ElkGraphNode } from '../../../components/viz/ElkGraph';
 import { Legend, Note, TextButton } from './ui';
@@ -31,6 +31,12 @@ export interface GotoGraphProps {
   currentStateId: number | null;
   visitedStateIds: ReadonlySet<number>;
   currentEdge: { from: number; symbol: string; to: number } | null;
+  /**
+   * Transport for fullscreen. This is the largest artifact in the app — the
+   * C-grammar LALR automaton — so fullscreen is the way it is meant to be read,
+   * and it has to stay steppable there: fullscreen hides the trace panel.
+   */
+  controls?: ReactNode;
 }
 
 export function edgeKey(t: { from: number; symbol: string; to: number }): string {
@@ -43,6 +49,7 @@ export function GotoGraph({
   currentStateId,
   visitedStateIds,
   currentEdge,
+  controls,
 }: GotoGraphProps) {
   const [forced, setForced] = useState(false);
   const show = forced || states.length <= AUTO_RENDER_LIMIT;
@@ -94,9 +101,7 @@ export function GotoGraph({
           </TextButton>
         }
       >
-        Laying out and rendering this many item sets costs seconds and teaches little: the
-        interesting object at this size is the item sets themselves. Step through them in the
-        panel beside this one, or draw the automaton if you want to see its shape.
+        A layout this size costs seconds. Step the item sets in the panel instead.
       </Note>
     );
   }
@@ -111,13 +116,14 @@ export function GotoGraph({
         currentEdgeIds={currentEdge ? [edgeKey(currentEdge)] : []}
         visitedIds={visited}
         height="24rem"
+        controls={controls}
       />
       <div className="flex flex-wrap items-center gap-3">
         <Network aria-hidden className="size-3.5 text-ink-faint" />
         <Legend
           items={[
             {
-              label: 'state being built (double ring)',
+              label: 'building',
               swatch: (
                 <span
                   aria-hidden
@@ -126,13 +132,13 @@ export function GotoGraph({
               ),
             },
             {
-              label: 'already in the collection',
+              label: 'built',
               swatch: (
                 <span aria-hidden className="inline-block size-3 rounded-sm border border-ink-faint bg-raised" />
               ),
             },
             {
-              label: 'not reached yet',
+              label: 'not reached',
               swatch: (
                 <span aria-hidden className="inline-block size-3 rounded-sm border border-line-strong bg-surface" />
               ),

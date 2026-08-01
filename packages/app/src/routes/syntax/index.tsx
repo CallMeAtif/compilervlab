@@ -6,14 +6,17 @@
  * ?table=, ?view=. Each algorithm replays exactly one worker trace; the page
  * owns the grammar (cheap) so the production rail is up before any trace lands.
  *
- * NOTE this route deliberately renders its own header instead of the shared
+ * NOTE this route renders its own header instead of the shared
  * `components/PhasePage`: PhasePage draws an algorithm tab row from the seven
  * *planned* ids in lib/phases.tsx, and syntax has ten selectable algorithms
  * (the LL(1) table and the LL(1) parse are different traces, and so are the LR
- * item sets and the LR parse). Two tab rows, one of them unable to represent the
- * current selection, would be worse than one correct one. The header markup is a
- * copy of PhasePage's so the phases still look identical, and the old ids
- * (?algo=ll1, ?algo=lalr1, …) are accepted as aliases.
+ * item sets and the LR parse). The old ids (?algo=ll1, ?algo=lalr1, …) are
+ * accepted as aliases.
+ *
+ * EDITORIAL (docs/EDITORIAL.md §0): ONE band of chrome above the content. Back
+ * link, title, status and the grammar picker share one row; the algorithm rail
+ * is the only nav; the citation is a marker, not a sentence. The page had seven
+ * bands and three standing paragraphs before a reader reached a number.
  */
 import {
   useCallback,
@@ -23,12 +26,12 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { Link } from 'react-router-dom';
 import * as Select from '@radix-ui/react-select';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Check, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
-import { PHASES, phaseInfo } from '../../lib/phases';
-import { stageInfo, useCompilationStore } from '../../store/compilation';
+import { useCompilationStore, stageInfo } from '../../store/compilation';
+import { phaseInfo } from '../../lib/phases';
 import { STATUS_META, StatusIcon } from '../../components/StatusBadge';
 import {
   ALGORITHMS,
@@ -76,11 +79,9 @@ function SentenceBar({
   const dirty = draft.trim() !== value.trim();
 
   return (
-    <div className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-surface p-2.5">
-      <label className="flex min-w-56 flex-1 flex-col gap-1">
-        <span className="text-[11px] font-semibold tracking-wide text-ink-faint uppercase">
-          Sentence to parse — whitespace-separated terminals
-        </span>
+    <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+      <label className="flex w-full max-w-2xl min-w-56 flex-1 flex-col gap-1">
+        <span className="group-label">Sentence</span>
         <input
           type="text"
           value={draft}
@@ -90,8 +91,9 @@ function SentenceBar({
             if (e.key === 'Enter') onCommit(draft.trim());
           }}
           onBlur={() => onCommit(draft.trim())}
-          aria-label="Sentence to parse"
-          className="h-11 w-full rounded-md border border-line bg-canvas px-3 font-mono text-sm text-ink outline-none focus-visible:border-accent"
+          aria-label="Sentence to parse — whitespace-separated terminals"
+          title="Whitespace-separated terminals"
+          className="h-11 w-full rounded-sm border-b border-control bg-transparent px-1 font-mono text-code text-ink focus-visible:border-accent"
         />
       </label>
       <button
@@ -99,7 +101,7 @@ function SentenceBar({
         onClick={() => onCommit(draft.trim())}
         disabled={!dirty}
         aria-label="Parse this sentence"
-        className="h-11 cursor-pointer rounded-md border border-accent bg-accent px-3 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+        className="h-11 cursor-pointer rounded-sm bg-accent px-3 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
       >
         Parse
       </button>
@@ -107,7 +109,7 @@ function SentenceBar({
         type="button"
         onClick={() => onCommit(meta.sample)}
         aria-label="Restore the textbook sentence"
-        className="h-11 cursor-pointer rounded-md border border-control px-3 text-xs font-semibold text-ink-muted transition-colors hover:border-line-strong hover:text-ink"
+        className="h-11 cursor-pointer rounded-sm px-2 text-xs font-semibold text-ink-muted underline decoration-line-strong underline-offset-4 transition-colors hover:text-ink hover:decoration-accent"
       >
         textbook example
       </button>
@@ -124,11 +126,14 @@ function GrammarSelect({
   value: GrammarId;
   onChange: (id: GrammarId) => void;
 }) {
+  // The grammar's one-line description lives in the OPTION and in the trigger's
+  // tooltip — never as standing body text under the picker.
   return (
     <Select.Root value={value} onValueChange={(v) => onChange(v as GrammarId)}>
       <Select.Trigger
         aria-label="Grammar"
-        className="flex h-11 min-w-64 cursor-pointer items-center justify-between gap-2 rounded-md border border-control bg-surface px-3 text-sm text-ink transition-colors hover:border-line-strong"
+        title={grammarMeta(value).blurb}
+        className="flex h-11 min-w-56 cursor-pointer items-center justify-between gap-2 rounded-sm border-b border-control bg-transparent px-1 text-sm text-ink transition-colors hover:border-line-strong"
       >
         <Select.Value />
         <Select.Icon>
@@ -139,14 +144,14 @@ function GrammarSelect({
         <Select.Content
           position="popper"
           sideOffset={4}
-          className="z-50 max-w-md rounded-md border border-line bg-surface p-1 shadow-lg"
+          className="overlay-panel z-50 max-w-md rounded-md p-1"
         >
           <Select.Viewport>
             {GRAMMARS.map((g) => (
               <Select.Item
                 key={g.id}
                 value={g.id}
-                className="flex cursor-pointer items-start gap-2 rounded px-2 py-2 text-sm text-ink outline-none select-none data-[highlighted]:bg-raised"
+                className="flex cursor-pointer items-start gap-2 rounded px-2 py-2 text-sm text-ink outline-none select-none data-[highlighted]:bg-accent-soft data-[highlighted]:shadow-[inset_2px_0_0_var(--accent)]"
               >
                 <Select.ItemIndicator className="mt-0.5">
                   <Check aria-hidden className="size-3.5 text-accent" />
@@ -224,11 +229,14 @@ function AlgorithmTabs({ value, onChange }: { value: AlgoId; onChange: (a: AlgoI
       aria-label="Syntax algorithms"
       aria-orientation="horizontal"
       onKeyDown={onKeyDown}
-      className="flex flex-wrap items-center gap-x-4 gap-y-2"
+      // ONE row. The three families keep their captions, set inline as mono
+      // markers rather than stacked over the tabs — the caption line was a
+      // second band of chrome for three words.
+      className="-mb-px flex flex-wrap items-end gap-x-3 border-b border-line"
     >
       {families.map((f) => (
-        <div key={f} role="presentation" className="flex flex-wrap items-center gap-1.5">
-          <span aria-hidden className="text-3xs font-semibold tracking-wide text-ink-faint uppercase">
+        <div key={f} role="presentation" className="flex flex-wrap items-end gap-x-1">
+          <span aria-hidden className="group-label self-center pr-1">
             {FAMILY_LABEL[f]}
           </span>
           {ALGORITHMS.filter((a) => a.family === f).map((a) => {
@@ -243,12 +251,12 @@ function AlgorithmTabs({ value, onChange }: { value: AlgoId; onChange: (a: AlgoI
                 title={a.blurb}
                 onClick={() => onChange(a.id)}
                 className={clsx(
-                  // Selected is marked by weight + an underline bar, not colour
-                  // alone — same signifier PhasePage uses.
-                  'h-11 cursor-pointer rounded-md border px-3 text-xs transition-colors',
+                  // Selected is marked by weight + an accent rule cut into the
+                  // row's hairline, never by colour alone.
+                  'flex h-11 cursor-pointer items-center px-2 text-sm whitespace-nowrap transition-colors duration-[var(--dur-fast)] sm:px-2.5',
                   selected
-                    ? 'border-accent bg-accent-soft font-semibold text-ink shadow-[inset_0_-2px_0_var(--accent)]'
-                    : 'border-control bg-surface font-medium text-ink-muted hover:bg-raised hover:text-ink',
+                    ? 'border-b-2 border-accent font-semibold text-ink'
+                    : 'border-b-2 border-transparent text-ink-muted hover:border-line-strong hover:text-ink',
                 )}
               >
                 {a.label}
@@ -267,13 +275,13 @@ export default function SyntaxPhaseRoute() {
   const url = useSyntaxUrl();
   const { grammar: grammarId, algo, stage, table, lr1View } = url;
 
-  const info = phaseInfo('syntax');
   const compilation = useCompilationStore((s) => s.compilation);
   const stale = useCompilationStore((s) => s.stale);
   const pipeline = useCompilationStore((s) => s.pipelineInfo);
-  const stage_ = stageInfo(compilation, stale, 'syntax', (c) => info.summary(c, pipeline));
-  const statusMeta = STATUS_META[stage_.status];
-  const Icon = info.icon;
+  const info = phaseInfo('syntax');
+  const phaseStage = stageInfo(compilation, stale, 'syntax', (c) => info.summary(c, pipeline));
+  const statusMeta = STATUS_META[phaseStage.status];
+  const PhaseIcon = info.icon;
 
   const meta = algoMeta(algo);
   const gMeta = grammarMeta(grammarId);
@@ -328,64 +336,47 @@ export default function SyntaxPhaseRoute() {
   const viewKey = `${grammarId}|${algo}|${stage}|${table}|${lr1View}|${source}`;
 
   return (
-    <div className="mx-auto flex w-full max-w-450 flex-1 flex-col gap-4 px-3 py-4 sm:px-5">
-      <header className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className="mx-auto flex w-full max-w-450 flex-1 flex-col px-3 py-4 sm:px-5">
+      {/* ONE band: back link, title, status and the grammar picker on one row,
+          the algorithm rail (the only nav on this page) under it, the citation
+          as a marker. No subtitle, no grammar blurb, no algorithm lecture. */}
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
           <Link
             to="/"
-            className="flex h-9 items-center gap-1 rounded-md px-2 text-sm text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+            className="-ml-1 flex h-8 items-center gap-1 self-center rounded-sm px-1 font-mono text-2xs tracking-[0.1em] text-ink-muted uppercase transition-colors hover:text-ink"
           >
-            <ArrowLeft aria-hidden className="size-4" />
+            <ArrowLeft aria-hidden className="size-3.5" />
             Overview
           </Link>
-          <span aria-hidden className="h-5 w-px bg-line" />
-          {/* Same shape as components/PhasePage's h1, ordinal included. */}
-          <h1 className="flex items-baseline gap-2 text-lg font-semibold tracking-tight">
-            <Icon
+          <h1 className="page-title flex items-baseline gap-2.5">
+            <PhaseIcon
               aria-hidden
-              className="size-5 shrink-0 translate-y-0.5 text-accent"
-              strokeWidth={2}
+              className="size-5 shrink-0 translate-y-0.5 text-ink-faint"
+              strokeWidth={1.75}
             />
-            <span>
-              <span aria-hidden className="mr-1.5 font-mono text-sm font-normal text-ink-faint">
-                {PHASES.findIndex((p) => p.phase === 'syntax') + 1}/{PHASES.length}
-              </span>
-              {info.title}
-            </span>
+            {info.title}
           </h1>
-          <span
-            className={clsx(
-              'flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
-              statusMeta.chip,
-            )}
-          >
-            <StatusIcon status={stage_.status} />
+          <span className={clsx('flex items-center gap-1.5 font-mono text-2xs', statusMeta.text)}>
+            <StatusIcon status={phaseStage.status} className="size-3" />
             {statusMeta.label}
-            {stage_.summary && (
+            {phaseStage.summary && (
               <>
                 <span aria-hidden className="text-ink-faint">
                   ·
                 </span>
-                <span className="font-mono">{stage_.summary}</span>
+                <span className="text-ink-muted">{phaseStage.summary}</span>
               </>
             )}
           </span>
-        </div>
-        <p className="max-w-3xl text-sm text-ink-muted">{info.blurb}</p>
-      </header>
-
-      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3">
-        <div className="flex flex-wrap items-center gap-3">
+          <span aria-hidden className="text-ink-faint">·</span>
+          <span className="section-meta">{meta.cite}</span>
+          <span aria-hidden className="hidden flex-1 sm:block" />
           <GrammarSelect value={grammarId} onChange={(id) => reselect({ grammar: id })} />
-          <p className="min-w-56 flex-1 text-xs leading-relaxed text-ink-muted">{gMeta.blurb}</p>
         </div>
-        <hr className="border-line" />
+
         <AlgorithmTabs value={algo} onChange={selectAlgo} />
-        <p className="text-xs leading-relaxed text-ink-muted">
-          <span className="font-semibold text-ink">{meta.label}</span>
-          <span className="mx-1.5 font-mono text-[11px] text-ink-faint">{meta.cite}</span>
-          {meta.blurb}
-        </p>
+
         {meta.needsInput && gMeta.input === 'terminals' && (
           <SentenceBar
             grammarId={grammarId}
@@ -397,11 +388,18 @@ export default function SyntaxPhaseRoute() {
             }}
           />
         )}
-      </div>
+      </header>
 
-      {meta.needsInput && gMeta.input === 'c' && <UpstreamFailure />}
+      {meta.needsInput && gMeta.input === 'c' && (
+        <div className="mt-6">
+          <UpstreamFailure />
+        </div>
+      )}
 
-      <div key={viewKey} className="flex-1">
+      {/* No rule here: the algorithm row's own hairline is the separator, and
+          two of them 24px apart with nothing between is a rhythm bug. */}
+      <div key={viewKey} className="mt-6 flex-1">
+
         {algo === 'first-follow' && <FirstFollowView {...ctx} />}
         {algo === 'transforms' && (
           <TransformsView ctx={ctx} stage={stage} onStage={(s: TransformStage) => reselect({ stage: s })} />

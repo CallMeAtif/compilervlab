@@ -94,9 +94,7 @@ export function DiffView({
   className,
 }: DiffViewProps) {
   return (
-    <div
-      className={clsx('overflow-hidden rounded-lg border border-line bg-surface', className)}
-    >
+    <div className={clsx('framed overflow-hidden', className)}>
       {/*
         ONE table, so the column headers cannot drift out of alignment with the
         cells (they used to live in a separate 1fr/1fr grid while the cells were
@@ -116,18 +114,21 @@ export function DiffView({
             <col style={{ width: '50%' }} />
             <col style={{ width: '2rem' }} />
           </colgroup>
+          {/* Column heads are LABELS, not a filled band: small caps mono over a
+              single strong hairline. The sticky row still needs an opaque
+              background, and `surface` is the sheet it sits on. */}
           <thead className="sticky top-0 z-10">
-            <tr className="bg-raised text-2xs font-semibold text-ink-muted">
-              <th scope="col" className="border-b border-line px-1.5 py-2">
+            <tr className="bg-surface text-2xs font-medium tracking-[0.1em] text-ink-faint uppercase">
+              <th scope="col" className="border-b border-line-strong px-1.5 py-2">
                 <span className="sr-only">Change</span>
               </th>
-              <th scope="col" className="border-b border-line px-3 py-2 text-left">
+              <th scope="col" className="border-b border-line-strong px-3 py-2 text-left">
                 {beforeLabel}
               </th>
-              <th scope="col" className="border-b border-l border-line px-3 py-2 text-left">
+              <th scope="col" className="border-b border-line-strong px-3 py-2 text-left">
                 {afterLabel}
               </th>
-              <th scope="col" className="border-b border-line px-1 py-2">
+              <th scope="col" className="border-b border-line-strong px-1 py-2">
                 <span className="sr-only">Justification</span>
               </th>
             </tr>

@@ -13,7 +13,6 @@ import { useStepper, type Stepper, type UseStepperOptions } from '../../../lib/u
 
 export interface SplitTraceViewProps<S, E extends { kind: string }> {
   trace: Trace<S, E>;
-  title?: string;
   stepperOptions?: UseStepperOptions;
   /** Per-algorithm "jump to…" entries for the shared StepControls menu. */
   jumpTargets?: readonly JumpTarget<E>[];
@@ -25,7 +24,6 @@ export interface SplitTraceViewProps<S, E extends { kind: string }> {
 
 export function SplitTraceView<S, E extends { kind: string }>({
   trace,
-  title,
   stepperOptions,
   jumpTargets,
   children,
@@ -34,11 +32,12 @@ export function SplitTraceView<S, E extends { kind: string }>({
   const stepper = useStepper<S, E>(trace, stepperOptions);
 
   return (
-    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
-      <div className="flex min-w-0 flex-col gap-3">{children(stepper)}</div>
+    <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_25rem]">
+      {/* No gap: the visualization's children are `.section`s, and the editorial
+          rhythm between titled regions is `.section + .section` (2rem). */}
+      <div className="flex min-w-0 flex-col">{children(stepper)}</div>
       <TracePanel
         stepper={stepper}
-        title={title}
         jumpTargets={jumpTargets}
         className="min-w-0 lg:sticky lg:top-4 lg:self-start"
       >

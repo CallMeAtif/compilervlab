@@ -18,6 +18,7 @@ import { useLexTrace } from '../useLexTrace';
 import { LoadingPanel, Note, Panel, TraceSplit, UnavailablePanel } from './ui';
 import { StatChips } from './bits';
 import { VirtualTable } from '../../../components/viz/VirtualTable';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 
 const TOKEN_COLUMNS: VTableColumn[] = [
   { key: 'type', header: 'type', width: 96 },
@@ -117,19 +118,13 @@ function TokensBody({
     <>
       <Panel
         title="Source"
-        subtitle={
-          selected === null
-            ? 'follows the stepper; select a row below to pin a span'
-            : 'showing the selected row'
-        }
-        bodyClassName="p-0"
+        subtitle={selected === null ? 'follows the stepper' : 'pinned to the selected row'}
       >
-        <CodeStrip source={source} spans={spans} maxHeight="13rem" className="rounded-none border-0" />
+        <CodeStrip source={source} spans={spans} maxHeight="13rem" />
       </Panel>
 
       <Panel
         title="Token stream"
-        subtitle="what the parser consumes"
         actions={
           <StatChips
             items={[
@@ -138,7 +133,6 @@ function TokensBody({
             ]}
           />
         }
-        bodyClassName="p-0"
       >
         <VirtualTable
           columns={TOKEN_COLUMNS}
@@ -146,7 +140,7 @@ function TokensBody({
           cornerLabel="#"
           height={320}
           aria-label="Token stream"
-          className="rounded-none border-0"
+          controls={<FullscreenTransport stepper={stepper} />}
           selectedRowId={selected?.kind === 'token' ? (tokenRows[selected.index]?.id ?? null) : null}
           scrollToRowId={tokenRows[currentTokenIndex]?.id ?? null}
           onRowSelect={(_id, i) => {
@@ -156,24 +150,15 @@ function TokensBody({
             if (at !== undefined) stepper.jumpTo(at + 1);
           }}
         />
-        <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">
-          Rows shaded in the <span className="font-mono">type</span> column have already been
-          emitted at the current step. Selecting a row seeks the trace to the moment Fig 3.54 wrote
-          it and highlights its span above. <span className="font-mono">symbolId</span> is filled in
-          only for identifiers — that is the scanner interning the lexeme.
-        </p>
       </Panel>
 
       <Panel
         title="Symbol table"
-        subtitle="one entry per distinct identifier lexeme (§2.7)"
+        subtitle="§2.7"
         actions={<StatChips items={[['identifiers', String(final.symbols.length)]]} />}
-        bodyClassName="p-0"
       >
         {final.symbols.length === 0 ? (
-          <p className="p-3 text-sm text-ink-muted">
-            This program declares no identifiers, so the lexer interned nothing.
-          </p>
+          <p className="prose-note text-sm">No identifiers in this program.</p>
         ) : (
           <VirtualTable
             columns={SYMBOL_COLUMNS}
@@ -181,17 +166,12 @@ function TokensBody({
             cornerLabel="id"
             height={Math.min(280, 32 * (symbolRows.length + 1) + 8)}
             aria-label="Symbol table"
-            className="rounded-none border-0"
             selectedRowId={
               selected?.kind === 'symbol' ? (symbolRows[selected.index]?.id ?? null) : null
             }
             onRowSelect={(_id, i) => setSelected({ kind: 'symbol', index: i })}
           />
         )}
-        <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">
-          Selecting an identifier highlights every occurrence of it in the source and marks its
-          <span className="font-mono"> symbolId</span> in the token table above.
-        </p>
       </Panel>
     </>
   );
@@ -223,9 +203,7 @@ export function TokensTab({
   }
   if (traceState.status === 'unavailable') {
     return (
-      <UnavailablePanel title="No token stream" diagnostics={traceState.diagnostics}>
-        The scanner trace could not be built, so there is no token stream to tabulate.
-      </UnavailablePanel>
+      <UnavailablePanel title="No token stream" diagnostics={traceState.diagnostics} />
     );
   }
 
@@ -233,7 +211,6 @@ export function TokensTab({
     <TraceSplit
       key={`tokens:${compilationId}`}
       trace={traceState.trace}
-      title="Tokenization"
       initialStep={initialStep}
       jumpTargets={[
         { label: 'token', predicate: (s) => s.event.kind === 'tokenEmitted' },

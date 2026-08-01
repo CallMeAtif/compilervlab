@@ -13,6 +13,7 @@ import type { VInstr } from '@lab/core/codegen/cg-events.js';
 import type { Trace } from '@lab/trace';
 import { clsx } from 'clsx';
 import { CheckCircle2, Repeat } from 'lucide-react';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import { useCodegenTrace } from '../useCodegenTrace';
 import { useSelectedCode } from '../useSelectedCode';
 import { prefixLatest } from '../traceScan';
@@ -21,11 +22,11 @@ import {
   FunctionPicker,
   Legend,
   LoadingPanel,
-  Notice,
   Panel,
   Tag,
   TraceGate,
   TraceSplit,
+  cgControl,
   pickFunctionName,
   useStepSync,
 } from '../shared';
@@ -135,7 +136,7 @@ function LivenessView({
         return (
           <>
             <AutoMicroSteps stepper={stepper} />
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="section flex flex-wrap items-center gap-x-6 gap-y-2">
               <FunctionPicker
                 names={names}
                 value={active}
@@ -143,8 +144,8 @@ function LivenessView({
                 onPick={setPinned}
                 onFollow={() => setPinned(null)}
               />
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-ink-faint">pass</span>
+              <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                <span className="mr-1 font-mono text-2xs text-ink-faint">pass</span>
                 {passSections
                   .filter((s) => s.fn === active)
                   .map((s) => (
@@ -153,12 +154,7 @@ function LivenessView({
                       type="button"
                       aria-pressed={s.pass === iter}
                       onClick={() => stepper.jumpTo(s.startIndex)}
-                      className={clsx(
-                        'flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 font-mono text-xs transition-colors',
-                        s.pass === iter
-                          ? 'border-accent bg-accent-soft text-ink'
-                          : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
-                      )}
+                      className={clsx(cgControl(s.pass === iter), 'gap-1 font-mono text-xs')}
                     >
                       <Repeat aria-hidden className="size-3" />
                       {s.pass}
@@ -167,29 +163,37 @@ function LivenessView({
               </div>
             </div>
 
-            {converged && (
-              <Notice tone="ok" title={`Converged after ${fnState?.iterations} backward pass(es)`}>
-                <p className="text-sm">
-                  The last pass changed no in/out set, so the fixpoint is reached — the live sets
-                  only ever grow, which is why the iteration must terminate (§9.2.5). These ranges
-                  are exactly the input to the interference graph.
-                </p>
-              </Notice>
-            )}
-
             <Panel
               title="Live ranges"
-              subtitle={
-                active !== null
-                  ? `${rows.length} tracked value(s) over ${count} instruction(s) — a bar means "live-in at this instruction"`
-                  : undefined
-              }
               actions={
+                <span className="section-meta flex items-center gap-1.5">
+                  {converged && (
+                    <>
+                      <CheckCircle2 aria-hidden className="size-3 text-ok" />
+                      converged · {fnState?.iterations} pass
+                      {fnState?.iterations === 1 ? '' : 'es'}
+                      <span aria-hidden className="text-ink-faint">
+                        ·
+                      </span>
+                    </>
+                  )}
+                  {active !== null ? `${rows.length} values × ${count} instructions` : ''}
+                </span>
+              }
+              frame
+              bodyClassName="p-3"
+              fullscreen={{
+                label: 'the live ranges',
+                controls: <FullscreenTransport stepper={stepper} />,
+              }}
+            >
+              {/* A key, set as one caption line — not prose. */}
+              <div className="mb-3">
                 <Legend
                   items={[
                     {
                       swatch: <span aria-hidden className="cg-live inline-block h-2.5 w-5" />,
-                      label: 'live',
+                      label: 'live-in',
                     },
                     {
                       swatch: (
@@ -207,18 +211,16 @@ function LivenessView({
                           className="inline-block h-3 w-1 rounded-sm bg-accent-strong"
                         />
                       ),
-                      label: 'instruction at the cursor',
+                      label: 'cursor',
                     },
                   ]}
                 />
-              }
-              bodyClassName="p-0"
-            >
-              <div className="overflow-x-auto">
-                <div className="min-w-max p-3">
+              </div>
+              <div className="artifact-scroll">
+                <div className="min-w-max">
                   {/* instruction-index ruler */}
-                  <div className="flex items-end">
-                    <div className="w-28 shrink-0 pr-2 text-right text-[10px] text-ink-faint">
+                  <div className="flex items-end border-b border-line pb-1">
+                    <div className="w-28 shrink-0 pr-2 text-right font-mono text-2xs text-ink-faint">
                       instruction →
                     </div>
                     <div className="flex">
@@ -226,7 +228,7 @@ function LivenessView({
                         <div
                           key={i}
                           className={clsx(
-                            'text-center font-mono text-[9px]',
+                            'text-center font-mono text-3xs tabular-nums',
                             i === atIndex ? 'font-bold text-accent' : 'text-ink-faint',
                           )}
                           style={{ width: CELL }}
@@ -238,9 +240,7 @@ function LivenessView({
                   </div>
 
                   {rows.length === 0 && (
-                    <p className="py-6 text-sm text-ink-faint">
-                      No tracked values yet — step forward to start the first backward pass.
-                    </p>
+                    <p className="prose-note py-6">No values yet. Step forward.</p>
                   )}
 
                   {rows.map((name) => {
@@ -249,7 +249,7 @@ function LivenessView({
                       <div key={name} className="flex items-center">
                         <div
                           className={clsx(
-                            'w-28 shrink-0 truncate pr-2 text-right font-mono text-[11px]',
+                            'w-28 shrink-0 truncate pr-2 text-right font-mono text-2xs',
                             name.startsWith('%') ? 'text-ink-faint italic' : 'text-ink',
                           )}
                           title={
@@ -290,67 +290,75 @@ function LivenessView({
 
             <Panel
               title="Instruction listing"
-              subtitle="use / def and the sets computed so far"
-              bodyClassName="p-0"
+              frame
+              bodyClassName="max-h-96"
+              fullscreen={{
+                label: 'the instruction listing',
+                controls: <FullscreenTransport stepper={stepper} />,
+              }}
             >
-              <div className="max-h-96 overflow-auto">
-                <table className="w-full border-collapse font-mono text-xs">
-                  <thead className="sticky top-0 z-10 bg-raised text-[11px] text-ink-muted">
-                    <tr>
-                      <th scope="col" className="w-10 px-2 py-1.5 text-right font-semibold">
-                        #
-                      </th>
-                      <th scope="col" className="px-2 py-1.5 text-left font-semibold">
-                        instruction
-                      </th>
-                      <th scope="col" className="px-2 py-1.5 text-left font-semibold">
-                        use
-                      </th>
-                      <th scope="col" className="px-2 py-1.5 text-left font-semibold">
-                        def
-                      </th>
-                      <th scope="col" className="px-2 py-1.5 text-left font-semibold">
-                        in
-                      </th>
-                      <th scope="col" className="px-2 py-1.5 text-left font-semibold">
-                        out
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: count }, (_, i) => {
-                      const instr = instrs[i];
-                      const isCurrent = i === atIndex;
-                      return (
-                        <tr
-                          key={i}
-                          aria-current={isCurrent ? 'step' : undefined}
+              <table className="w-full border-collapse font-mono type-code">
+                <thead className="sticky top-0 z-10 bg-surface text-2xs tracking-wide text-ink-faint uppercase">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="w-10 border-b border-line px-2 py-2 text-right font-medium"
+                    >
+                      #
+                    </th>
+                    <th scope="col" className="border-b border-line px-2 py-2 text-left font-medium">
+                      instruction
+                    </th>
+                    <th scope="col" className="border-b border-line px-2 py-2 text-left font-medium">
+                      use
+                    </th>
+                    <th scope="col" className="border-b border-line px-2 py-2 text-left font-medium">
+                      def
+                    </th>
+                    <th scope="col" className="border-b border-line px-2 py-2 text-left font-medium">
+                      in
+                    </th>
+                    <th scope="col" className="border-b border-line px-2 py-2 text-left font-medium">
+                      out
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: count }, (_, i) => {
+                    const instr = instrs[i];
+                    const isCurrent = i === atIndex;
+                    return (
+                      <tr
+                        key={i}
+                        aria-current={isCurrent ? 'step' : undefined}
+                        className={clsx(
+                          'border-b border-line/60 align-top',
+                          isCurrent && 'bg-accent-soft shadow-[inset_3px_0_0_var(--accent)]',
+                        )}
+                      >
+                        <td className="px-2 py-1 text-right text-2xs text-ink-faint tabular-nums">
+                          {i}
+                        </td>
+                        <td
                           className={clsx(
-                            'border-b border-line/60 align-top',
-                            isCurrent && 'bg-accent-soft',
+                            'px-2 py-1 whitespace-pre',
+                            instr?.kind === 'label' ? 'text-ink-muted' : 'text-ink',
+                            isCurrent && 'font-semibold',
                           )}
                         >
-                          <td className="px-2 py-1 text-right text-ink-faint">{i}</td>
-                          <td
-                            className={clsx(
-                              'px-2 py-1 whitespace-pre',
-                              instr?.kind === 'label' ? 'text-ink-muted' : 'text-ink',
-                              isCurrent && 'font-semibold',
-                            )}
-                          >
-                            {instr ? formatVInstr(instr) : '—'}
-                          </td>
-                          <td className="px-2 py-1 text-ink-muted">
-                            {isCurrent && ev?.kind === 'instrLive' ? ev.use.join(' ') : ''}
-                          </td>
-                          <td className="px-2 py-1 text-ink-muted">
-                            {isCurrent && ev?.kind === 'instrLive' ? ev.def.join(' ') : ''}
-                          </td>
-                          <td className="px-2 py-1 text-ink-muted">
-                            {(fnState?.liveIn[i] ?? []).join(' ')}
-                          </td>
-                          <td className="px-2 py-1 text-ink-muted">
-                            {(fnState?.liveOut[i] ?? []).join(' ')}
+                          {instr ? formatVInstr(instr) : '—'}
+                        </td>
+                        <td className="px-2 py-1 text-xs text-ink-muted">
+                          {isCurrent && ev?.kind === 'instrLive' ? ev.use.join(' ') : ''}
+                        </td>
+                        <td className="px-2 py-1 text-xs text-ink-muted">
+                          {isCurrent && ev?.kind === 'instrLive' ? ev.def.join(' ') : ''}
+                        </td>
+                        <td className="px-2 py-1 text-xs text-ink-muted">
+                          {(fnState?.liveIn[i] ?? []).join(' ')}
+                        </td>
+                        <td className="px-2 py-1 text-xs text-ink-muted">
+                          {(fnState?.liveOut[i] ?? []).join(' ')}
                             {isCurrent && ev?.kind === 'instrLive' && (
                               <Tag
                                 tone={ev.changed ? 'accent' : 'neutral'}
@@ -375,9 +383,8 @@ function LivenessView({
                         </tr>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
             </Panel>
           </>
         );

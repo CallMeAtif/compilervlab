@@ -9,10 +9,11 @@
  *   • the ε-closure stack of Fig 3.33 while it runs (input set, stack, closure);
  *   • the DFA graph, revealed D-state by D-state over a layout computed once.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { clsx } from 'clsx';
 import { subsetReducer, type SubsetEvent, type SubsetState } from '@lab/core/lex/reducers.js';
 import { ElkGraph, elkHiddenIds } from '../../../components/viz/ElkGraph';
+import { FullscreenTransport } from '../../../components/Fullscreen';
 import {
   VirtualTable,
   type VTableColumn,
@@ -29,6 +30,7 @@ import {
   LoadingPanel,
   Note,
   Panel,
+  Reveal,
   TraceSplit,
   UnavailablePanel,
 } from './ui';
@@ -39,9 +41,12 @@ const SET_COL_W = 260;
 function DstatesTable({
   state,
   currentStep,
+  controls,
 }: {
   state: SubsetState;
   currentStep: { event: SubsetEvent } | null;
+  /** Transport, so the table stays steppable once it fills the screen. */
+  controls?: ReactNode;
 }) {
   const columns = useMemo<VTableColumn[]>(
     () => [
@@ -110,7 +115,7 @@ function DstatesTable({
       cornerLabel="Dstate"
       height={300}
       aria-label="Dstates and Dtran (Fig 3.36 / 3.37)"
-      className="rounded-none border-0"
+      controls={controls}
     />
   );
 }
@@ -122,13 +127,7 @@ function EclosurePanel({ state, currentStep }: { state: SubsetState; currentStep
   const added = e && e.kind === 'eclosureAdd' ? e.state : null;
 
   if (!working) {
-    return (
-      <p className="text-sm text-ink-muted">
-        No ε-closure in progress. Turn on <span className="font-medium">micro steps</span> in the
-        controls to watch the Fig 3.33 stack algorithm run for every{' '}
-        <code className="font-mono">move(T, a)</code>.
-      </p>
-    );
+    return <p className="prose-note text-sm">No closure running. Turn on micro steps.</p>;
   }
 
   return (
@@ -140,8 +139,8 @@ function EclosurePanel({ state, currentStep }: { state: SubsetState; currentStep
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <h4 className="mb-1 text-xs font-semibold text-ink-muted">stack (top on the right)</h4>
-          <div className="flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-line bg-raised p-1.5">
+          <p className="group-label mb-1.5 block">stack (top on the right)</p>
+          <div className="framed flex min-h-9 flex-wrap items-center gap-1 p-1.5">
             {working.stack.length === 0 ? (
               <span className="px-1 text-xs text-ink-faint">empty — the closure is complete</span>
             ) : (
@@ -162,8 +161,8 @@ function EclosurePanel({ state, currentStep }: { state: SubsetState; currentStep
           </div>
         </div>
         <div>
-          <h4 className="mb-1 text-xs font-semibold text-ink-muted">closure so far</h4>
-          <div className="flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-line bg-raised p-1.5">
+          <p className="group-label mb-1.5 block">closure so far</p>
+          <div className="framed flex min-h-9 flex-wrap items-center gap-1 p-1.5">
             {working.closure.map((s) => (
               <span
                 key={s}
@@ -186,7 +185,7 @@ function EclosurePanel({ state, currentStep }: { state: SubsetState; currentStep
   );
 }
 
-function SubsetBody({ cls, stepper }: { cls: LexTokenClass; stepper: Stepper<SubsetState, SubsetEvent> }) {
+function SubsetBody({ stepper }: { stepper: Stepper<SubsetState, SubsetEvent> }) {
   const { trace, state, currentStep } = stepper;
   const final = useMemo(() => trace.final(), [trace]);
 
@@ -236,46 +235,51 @@ function SubsetBody({ cls, stepper }: { cls: LexTokenClass; stepper: Stepper<Sub
     <>
       <Panel
         title="Dstates / Dtran"
-        subtitle="Fig 3.36 (the D-states) and Fig 3.37 (the transition table), filled in one entry per step"
+        subtitle="Fig 3.36 · 3.37"
         actions={
-          <StatChips
-            items={[
-              ['D-states', String(state.states.length)],
-              ['unmarked', String(unmarked)],
-              ['alphabet', String(state.alphabet.length)],
-            ]}
-          />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <StatChips
+              items={[
+                ['D-states', String(state.states.length)],
+                ['unmarked', String(unmarked)],
+                ['alphabet', String(state.alphabet.length)],
+              ]}
+            />
+            <Reveal label="key">
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-2xs text-ink-faint">
+                <li>✓ marked</li>
+                <li>○ unmarked</li>
+                <li>▸ start state</li>
+                <li>cell = Dtran[T, a]; empty = no move</li>
+              </ul>
+            </Reveal>
+          </div>
         }
-        bodyClassName="p-0"
       >
-        <DstatesTable state={state} currentStep={currentStep} />
-        <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">
-          ✓ = marked (its transitions are all computed) · ○ = still unmarked in the worklist ·
-          ▸ marks the start state. A cell holds <code className="font-mono">Dtran[T, a]</code>;
-          empty means the DFA has no move on that symbol.
-        </p>
+        <DstatesTable
+          state={state}
+          currentStep={currentStep}
+          controls={<FullscreenTransport stepper={stepper} />}
+        />
       </Panel>
 
-      <Panel title="ε-closure worklist" subtitle="Fig 3.33 — the stack algorithm">
+      <Panel title="ε-closure worklist" subtitle="Fig 3.33">
         <EclosurePanel state={state} currentStep={currentStep} />
       </Panel>
 
       <Panel
         title="DFA under construction"
-        subtitle={`${state.states.length} of ${final.states.length} D-states built`}
-        actions={<AutomatonLegend kind="dfa" />}
-        bodyClassName="p-0"
+        subtitle={`${state.states.length} / ${final.states.length} D-states`}
+        actions={
+          <Reveal label="key">
+            <AutomatonLegend kind="dfa" />
+          </Reveal>
+        }
       >
         <HeavyGate
           render={isHeavyGraph(graph)}
           title={`${final.states.length} D-states and ${graph.edges.length} edges is a lot to draw`}
-          reason={
-            <p>
-              Every character of the alphabet gets its own transition — nothing merges — so this
-              DFA is far denser than the book's five-state example. The Dstates table above holds
-              exactly the same information.
-            </p>
-          }
+          reason={<p>The Dstates table above holds the same information.</p>}
         >
           <ElkGraph
             nodes={graph.nodes}
@@ -286,14 +290,11 @@ function SubsetBody({ cls, stepper }: { cls: LexTokenClass; stepper: Stepper<Sub
             hiddenIds={hidden}
             direction="RIGHT"
             height="24rem"
-            className="lex-graph rounded-none border-0"
+            // Fullscreen hides the trace panel; the DFA keeps its own transport.
+            controls={<FullscreenTransport stepper={stepper} />}
+            className="lex-graph"
           />
         </HeavyGate>
-        <p className="border-t border-line px-3 py-2 text-xs text-ink-muted">
-          Note how many D-states there are: ε-closure(move(A, '0')) and ε-closure(move(A, '1'))
-          are different NFA state sets, so the subset construction keeps one state per character.
-          Stage 3 is what collapses them — {cls.def.name} minimizes to a handful of states.
-        </p>
       </Panel>
     </>
   );
@@ -333,16 +334,8 @@ export function SubsetView({
         }
       >
         <p>
-          <code className="font-mono">{cls.def.display}</code> expands{' '}
-          <code className="font-mono">letter</code> into {cls.alphabet.length} literal symbols, and
-          Algorithm 3.20 walks the ε-closure stack once per (D-state, symbol) pair. The recording
-          runs past the trace recorder's 200 000-event cap and the payload reaches roughly 100 MB —
-          it would freeze the tab for a long time.
-        </p>
-        <p className="mt-1">
-          This blow-up is the lesson: production scanners keep transitions on{' '}
-          <em>character classes</em> rather than on individual characters. The two constant classes
-          run the identical algorithm at a readable size.
+          {cls.alphabet.length} literal symbols blows past the recorder's 200 000-event cap
+          (~100 MB). The constant classes run the same algorithm at a readable size.
         </p>
       </Note>
     );
@@ -371,7 +364,6 @@ export function SubsetView({
     <TraceSplit
       key={`subset:${cls.index}`}
       trace={traceState.trace}
-      title={`Subset construction · ${cls.def.name}`}
       initialStep={initialStep}
       jumpTargets={[
         { label: 'new D-state', predicate: (s) => s.event.kind === 'dstateCreated' },
@@ -380,7 +372,7 @@ export function SubsetView({
         { label: 'done', predicate: (s) => s.event.kind === 'complete' },
       ]}
     >
-      {(stepper) => <SubsetBody cls={cls} stepper={stepper} />}
+      {(stepper) => <SubsetBody stepper={stepper} />}
     </TraceSplit>
   );
 }

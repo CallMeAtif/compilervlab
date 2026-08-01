@@ -29,7 +29,7 @@ export function TraceGate<S, E extends { kind: string }>({
     return (
       <TraceUnavailable
         title={`Could not record ${what}`}
-        explanation="The compile worker rejected the request. This is a bug in the lab rather than in your program — the message below is the worker's."
+        explanation="The compile worker rejected the request."
         error={load.error}
       />
     );
@@ -38,10 +38,7 @@ export function TraceGate<S, E extends { kind: string }>({
     return (
       <TraceUnavailable
         title={`No trace for ${what}`}
-        explanation={
-          unavailableExplanation ??
-          'The worker could not build this trace. When a trace depends on an earlier phase, the diagnostics that blocked it are listed below.'
-        }
+        explanation={unavailableExplanation ?? 'The worker could not build this trace.'}
         diagnostics={load.diagnostics}
       />
     );

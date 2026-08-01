@@ -41,7 +41,11 @@ export function TacListing({
   return (
     <ol
       aria-label={ariaLabel}
-      className={clsx('overflow-auto rounded-md border border-line bg-code font-mono text-xs', className)}
+      className={clsx(
+        // A code listing is one of the artifacts that EARNS a border.
+        'framed artifact-scroll bg-code font-mono type-code',
+        className,
+      )}
     >
       {lines.map((line) => {
         const rule = leaders?.get(line.index);
@@ -59,24 +63,26 @@ export function TacListing({
               rule !== undefined && !isCurrent && 'bg-raised',
             )}
           >
-            <span className="w-6 shrink-0 text-right text-ink-faint">{line.index}</span>
+            <span className="w-6 shrink-0 text-right text-2xs text-ink-faint tabular-nums">
+              {line.index}
+            </span>
             <span className="flex w-11 shrink-0 justify-start">
               {rule !== undefined ? (
                 <span
                   title={LEADER_RULES[rule]}
-                  className="inline-flex h-4 items-center gap-0.5 rounded-sm border border-accent/60 px-1 text-[10px] font-semibold text-ink"
+                  className="inline-flex h-4 items-center gap-0.5 rounded-sm border border-accent/60 px-1 text-3xs font-semibold text-ink"
                 >
                   <Flag aria-hidden className="size-2.5" />
                   L{rule}
                 </span>
               ) : null}
             </span>
-            <span className="w-9 shrink-0 text-[10px] text-ink-muted">
+            <span className="w-9 shrink-0 text-2xs text-ink-muted">
               {block !== undefined ? `B${block}` : ''}
             </span>
             <span className="min-w-0 flex-1 whitespace-pre-wrap text-ink">{line.text}</span>
             {marker && (
-              <span className="shrink-0 rounded-sm border border-line-strong px-1 text-[10px] tracking-wide text-ink-muted uppercase">
+              <span className="shrink-0 rounded-sm border border-line-strong px-1 text-3xs tracking-wide text-ink-muted uppercase">
                 {marker}
               </span>
             )}

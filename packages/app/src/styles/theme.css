@@ -27,18 +27,19 @@
  *                          the only thing identifying a button or input.
  *
  * ── Contrast contract (measured, both themes; see styles/README.md) ─────────
- *   ink        >= 13:1 on canvas / surface / raised / code / *-soft
- *   ink-muted  >=  5.9:1 on canvas / surface / raised
- *   ink-faint  >=  4.6:1 on canvas / surface / raised  (AA body text).
+ *   ink        >= 12.8:1 on canvas / surface / raised / code / *-soft
+ *   ink-muted  >=  5.7:1 on canvas / surface / raised / accent-soft
+ *   ink-faint  >=  5.2:1 on canvas / surface / raised  (AA body text).
  *                  NOT rated on accent-soft — use ink-muted there.
- *   accent     >=  5.5:1 on canvas / surface / raised / accent-soft
- *   ok/warn/err>=  5.3:1 on their own *-soft AND on canvas / surface
- *   on-*       >=  6.2:1 on the solid colour it labels
- *   control    >=  3.1:1 on canvas / surface / raised (non-text, 1.4.11)
+ *   accent     >=  4.5:1 on canvas / surface / raised / accent-soft
+ *   ok/warn/err>=  5.1:1 on their own *-soft AND on canvas / surface
+ *   on-*       >=  5.9:1 on the solid colour it labels
+ *   control    >=  3.2:1 on canvas / surface / raised (non-text, 1.4.11)
  *
  * ── Type ────────────────────────────────────────────────────────────────────
- *   System sans for prose and chrome; ui-monospace for every artifact — token
- *   tables, automata labels, TAC, ACTION/GOTO cells, x86-64. Tabular figures
+ *   Source Serif 4 for prose, titles and chrome; JetBrains Mono for every
+ *   artifact — token tables, automata labels, TAC, ACTION/GOTO cells, x86-64.
+ *   Both bundled (@fontsource-variable/*), never fetched. Tabular figures
  *   everywhere and ligatures OFF in mono, because `->`, `!=` and `&&` are
  *   characters being taught, not typography. Scale in styles/index.css.
  *
@@ -49,79 +50,98 @@
  *   prefers-reduced-motion collapses every transition and animation.
  */
 
+/*
+ * LIGHT — the secondary theme. Neutral slate with NO colour cast: an earlier
+ * revision used a warm cream/oxblood paper and it was rejected as fatiguing
+ * (docs/EDITORIAL.md rule 4). Canvas and surface sit close together in
+ * luminance so nothing glares, and the accent is a restrained ink blue whose
+ * only job is to say "this is the current step".
+ */
 :root {
-  /* surfaces — canvas < surface (cards) < raised (headers, chips, hovers) */
-  --canvas: #f6f7f9;
-  --surface: #ffffff;
-  --raised: #eef0f4;
-  --line: #e3e6ec;
-  --line-strong: #adb5c8;
+  /* surfaces — `surface` is the PAGE, the sheet everything sits on; regions
+     are separated by rules and whitespace, not by a lighter box on a darker
+     field (docs/EDITORIAL.md rule 4). `raised` is interactive chrome only. */
+  --canvas: #f4f6f8;
+  --surface: #fcfdfe;
+  --raised: #eaedf2;
+  --line: #dfe3ea;
+  --line-strong: #a5adba;
   /* >= 3:1 on canvas/surface/raised: outlines of buttons, inputs, selects */
-  --control: #7d879f;
+  --control: #737d8c;
 
-  /* text */
-  --ink: #1a1d27;
-  --ink-muted: #545b6e;
-  --ink-faint: #606676;
+  /* ink — neutral near-black, never pure #000 */
+  --ink: #1b1f26;
+  --ink-muted: #4f5763;
+  --ink-faint: #5a626f;
 
-  /* accent (indigo) = "current" */
-  --accent: #4f46e5;
-  --accent-strong: #4338ca;
-  --accent-soft: #e5e7ff;
+  /* accent = "current", and nothing else. One accent only; status colours
+     carry the rest of the meaning, so the eye learns that blue === the focus
+     (docs/EDITORIAL.md rule 3). */
+  --accent: #2f5fd0;
+  --accent-strong: #244aa4;
+  --accent-soft: #e5ecfc;
   --on-accent: #ffffff;
 
   /* status */
-  --ok: #0f6f33;
-  --ok-soft: #d9f2e3;
+  --ok: #256a39;
+  --ok-soft: #dff0e4;
   --on-ok: #ffffff;
-  --err: #b42318;
-  --err-soft: #fde9e7;
+  --err: #b02a1f;
+  --err-soft: #fbe7e4;
   --on-err: #ffffff;
-  --warn: #92510a;
-  --warn-soft: #fdf0d9;
+  --warn: #8a5a12;
+  --warn-soft: #f8eeda;
   --on-warn: #ffffff;
 
   /* code */
-  --code-bg: #f3f4f8;
-  --src-highlight: rgba(79, 70, 229, 0.16);
+  --code-bg: #f1f4f7;
+  --src-highlight: rgba(47, 95, 208, 0.14);
 
   --ring: var(--accent);
-  --scrim: rgba(15, 18, 26, 0.5);
+  --scrim: rgba(20, 24, 30, 0.5);
 
-  /* elevation — exactly two levels: flat cards, and overlays */
+  /* elevation — editorial layouts earn depth from rules and space, so the only
+     shadow in the system belongs to things that genuinely float. */
   --shadow-overlay:
-    0 1px 2px rgba(15, 18, 26, 0.06), 0 8px 24px -6px rgba(15, 18, 26, 0.18);
+    0 1px 2px rgba(20, 24, 30, 0.06), 0 8px 24px -6px rgba(20, 24, 30, 0.18);
 }
 
+/*
+ * DARK — the DEFAULT, and the theme tuned first: this is a tool people read for
+ * long stretches. Neutral slate, never a true #000 — pure black under bright
+ * text maximises halation and is the single most fatiguing pairing there is —
+ * and the ink is a soft off-white rather than #fff for the same reason. The
+ * accent is desaturated UP, not inverted (§6 color-dark-mode).
+ */
 .dark {
-  --canvas: #0e1116;
-  --surface: #151a22;
-  --raised: #1c222d;
-  --line: #29303d;
-  --line-strong: #525c72;
-  --control: #657191;
+  --canvas: #0f1216;
+  --surface: #151920;
+  --raised: #1d222b;
+  --line: #272d38;
+  --line-strong: #4b5566;
+  --control: #6d788a;
 
-  --ink: #e8eaf2;
-  --ink-muted: #a6adc0;
-  --ink-faint: #9098ae;
+  --ink: #e4e8ef;
+  --ink-muted: #a1aab8;
+  --ink-faint: #929cac;
 
-  --accent: #8b93f8;
-  --accent-strong: #a5b4fc;
-  --accent-soft: #2b2f55;
-  --on-accent: #0e1116;
+  --accent: #7ba3f2;
+  --accent-strong: #9dbcff;
+  --accent-soft: #1c2740;
+  --on-accent: #0f1216;
 
-  --ok: #47c682;
-  --ok-soft: #12301f;
-  --on-ok: #0e1116;
-  --err: #f28b82;
-  --err-soft: #3a1a16;
-  --on-err: #0e1116;
-  --warn: #e0aa4e;
-  --warn-soft: #33270f;
-  --on-warn: #0e1116;
+  --ok: #7cbd8d;
+  --ok-soft: #16261c;
+  --on-ok: #0f1216;
+  --err: #e78d83;
+  --err-soft: #2e1a18;
+  --on-err: #0f1216;
+  --warn: #d3a765;
+  --warn-soft: #2a2214;
+  --on-warn: #0f1216;
 
-  --code-bg: #11151d;
-  --src-highlight: rgba(139, 147, 248, 0.24);
+  --code-bg: #0c0f13;
+  --src-highlight: rgba(123, 163, 242, 0.2);
 
   --ring: var(--accent);
   --scrim: rgba(0, 0, 0, 0.6);

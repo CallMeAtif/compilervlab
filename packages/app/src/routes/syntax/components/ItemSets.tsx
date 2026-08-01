@@ -35,7 +35,7 @@ export function ItemSets({
   currentStateId,
   added,
   justifies,
-  emptyLabel = 'No states built yet — step forward to start the collection.',
+  emptyLabel = 'Step forward to build the first state.',
 }: {
   states: readonly ItemSetState[];
   currentStateId: number | null;
@@ -60,7 +60,7 @@ export function ItemSets({
   }, [added, justifies, selectedId]);
 
   if (states.length === 0) {
-    return <p className="p-2 text-sm text-ink-muted">{emptyLabel}</p>;
+    return <p className="prose-note text-sm">{emptyLabel}</p>;
   }
 
   return (
@@ -69,7 +69,7 @@ export function ItemSets({
         ref={chipsRef}
         role="tablist"
         aria-label="Item sets"
-        className="flex max-h-24 flex-wrap gap-1 overflow-auto rounded-md border border-line bg-canvas p-1.5"
+        className="framed artifact-scroll flex max-h-24 flex-wrap gap-1 p-1.5"
       >
         {states.map((s) => {
           const isCurrent = s.id === currentStateId;
@@ -84,10 +84,10 @@ export function ItemSets({
               aria-label={`Item set I${s.name}${isCurrent ? ' (being built)' : ''}`}
               onClick={() => setPinned(s.id)}
               className={clsx(
-                'h-7 min-w-9 cursor-pointer rounded border px-1.5 font-mono text-[11px] transition-colors',
+                'h-7 min-w-9 cursor-pointer rounded-sm px-1.5 font-mono text-2xs transition-colors',
                 isSelected
-                  ? 'border-accent bg-accent-soft font-semibold text-ink'
-                  : 'border-line bg-surface text-ink-muted hover:border-line-strong hover:text-ink',
+                  ? 'bg-accent-soft font-semibold text-ink shadow-[inset_0_-2px_0_var(--accent)]'
+                  : 'text-ink-muted hover:bg-raised hover:text-ink',
               )}
             >
               {isCurrent && (
@@ -102,9 +102,9 @@ export function ItemSets({
       </div>
 
       <div className="flex items-center gap-2">
-        <h4 className="font-mono text-sm font-semibold text-ink">
+        <h4 className="font-mono text-code font-semibold text-ink">
           I{selected?.name ?? '—'}
-          <span className="ml-2 font-sans text-xs font-normal text-ink-muted">
+          <span className="ml-2 text-2xs font-normal text-ink-faint">
             {selected?.rows.length ?? 0} item{(selected?.rows.length ?? 0) === 1 ? '' : 's'}
           </span>
         </h4>
@@ -114,14 +114,14 @@ export function ItemSets({
           aria-label={pinned === null ? 'Pinned to the state being built' : 'Follow the state being built'}
           onClick={() => setPinned(null)}
           disabled={pinned === null}
-          className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-control px-2.5 text-[11px] text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:cursor-default disabled:opacity-50"
+          className="flex h-9 cursor-pointer items-center gap-1.5 rounded-sm px-2 text-2xs text-ink-muted transition-colors hover:bg-raised hover:text-ink disabled:cursor-default disabled:opacity-50"
         >
           {pinned === null ? <Pin aria-hidden className="size-3.5" /> : <PinOff aria-hidden className="size-3.5" />}
           {pinned === null ? 'following current' : 'follow current'}
         </button>
       </div>
 
-      <ul className="flex max-h-96 min-w-0 flex-col gap-0.5 overflow-auto rounded-md border border-line bg-canvas p-1.5 font-mono text-xs">
+      <ul className="framed artifact-scroll flex max-h-96 min-w-0 flex-col gap-0.5 p-1.5 font-mono text-xs">
         {(selected?.rows ?? []).map((row) => {
           const isNew = row.key === rowMarks.addedKey;
           const isWhy = row.key === rowMarks.justKey;
