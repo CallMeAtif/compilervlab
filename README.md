@@ -19,12 +19,21 @@ Type (or pick) a C program, press **Compile**, and then:
   into NFAs by Thompson's construction, subset-construct them into DFAs, minimize them by partition
   refinement — then watch the DFA-driven scanner chew through *your* source with longest-match
   retraction, keyword lookup and symbol-table interning, one lexeme at a time.
+  Those three constructions build the *recognizer* from a token pattern, so they are the same for
+  every program — that is what a lexer generator does once, ahead of time. To connect them to your
+  code, **run one of your own lexemes on the machine**: pick any token of that class from your
+  program and watch it walk the automaton to an accepting state. The machine is fixed; the path
+  through it is yours.
 - **Compare every parser in the book on the same grammar.** FIRST/FOLLOW fixed points; left-recursion
   elimination and left factoring shown as their own traced transformations; the LL(1) table with its
   conflict cells; recursive descent as a call tree; the LR(0) collection with its GOTO graph; SLR(1),
   canonical LR(1) and LALR(1) ACTION/GOTO tables — and the shift/reduce and reduce/reduce conflicts
   each one genuinely has. Switch to the book's study grammars (Fig 4.1, Example 4.28, Example 4.55)
   and the tables reproduce the published ones.
+  Pick a **left-recursive** grammar with a top-down algorithm and the lab refuses to run it — a
+  predictive parser expanding `E → E + T` never consumes a token (§4.3.3) — then offers to *watch*
+  Algorithm 4.19 eliminate the recursion and hands you back a grammar that parses, saying which one
+  it switched to. Grammar 4.1 becomes Grammar 4.28; the C subset becomes its LL-ready form.
 - **See the parse that actually happened.** The pipeline's parser is the LALR(1) machine our own
   constructor builds from the C-subset grammar: **147 states, merged from 553 canonical LR(1)
   states, with exactly one conflict** — the dangling `else`, resolved by shift with the §4.8.2
@@ -45,16 +54,30 @@ Type (or pick) a C program, press **Compile**, and then:
 - **Run the result.** An x86-64 subset interpreter executes the emitted assembly step by step; it is
   also the test oracle that has to agree with the TAC interpreter.
 
-Every phase has the same transport: prev / next / play / pause / reset, a speed control, a
-macro-vs-micro step filter, a scrubber with named section ticks, and a per-algorithm **"Jump to…"**
-menu whose entries are whatever that algorithm found interesting — next retraction, next keyword,
-next lexical error, next new state, next GOTO, next conflict, next dataflow iteration, next
-`makelist` / `backpatch` — each showing how many are left in the trace. Keyboard: ←/→ step,
-Shift+←/→ jump a section, Space plays/pauses, Home/End go to the ends. Every step shows a prose
-explanation and its Dragon Book citation badge. Selection lives in the URL
+Every phase has the same transport: reset / prev / play / next, the step counter and a scrubber with
+named section ticks. Everything else — playback speed, the macro-vs-micro step filter, and the
+per-algorithm **"Jump to…"** targets — lives behind one **Step options** menu, because you are not
+using them while you step. Those jump targets are whatever the algorithm found interesting — next
+retraction, next keyword, next lexical error, next new state, next GOTO, next conflict, next
+dataflow iteration, next `makelist` / `backpatch` — each showing how many are left in the trace.
+
+The counter reads in **navigable positions, not raw trace indices**: at macro level, `3 / 6` means
+the third of six places the transport can stop, and a `+20 micro` marker says how many steps the
+filter is hiding. (Numbering raw indices made next jump `1 → 22` while still promising `/ 26`.)
+Keyboard: ←/→ step, Shift+←/→ jump a section, Space plays/pauses, Home/End go to the ends.
+
+Every step shows a prose explanation and its Dragon Book citation badge. Selection lives in the URL
 (`/syntax?algo=lalr&step=42`), so any step of any algorithm is a link. Errors are stopping points,
 not dead ends: playback runs to the failing step and explains the rule that was violated, with the
 source span highlighted.
+
+**Every diagram opens fullscreen** — automata, GOTO graphs, parse trees, CFGs, interference graphs
+and the big ACTION/GOTO tables. The transport comes with it as a bar along the bottom, so a
+hundred-state NFA is still steppable at full size; Escape returns you at the same step.
+
+The app **opens in its dark theme** and remembers the toggle; both themes are contrast-checked
+(every foreground/background pair meets WCAG AA except the one editor token noted under
+[known limitations](#known-limitations)).
 
 ## Quick start
 
@@ -72,6 +95,7 @@ Everything else:
 
 ```bash
 pnpm test        # the whole golden / invariant / property / integration suite (vitest, node env)
+pnpm test:e2e    # browser suite: builds, then drives the real app in Chromium (playwright)
 pnpm typecheck   # tsc --noEmit for packages/trace, packages/core, packages/app
 pnpm build       # production build of the app into packages/app/dist
 pnpm preview     # serve that build
@@ -359,6 +383,10 @@ These are real, and we would rather say so than let you discover them.
 - `elkjs` is a **1.4 MB** chunk (438 kB gzipped) and CodeMirror another 526 kB. Both are split out
   and fetched only by the routes that need them (elk is imported dynamically by the graph view), but
   the graph-heavy phases are not featherweight.
+- **The densest graphs need fullscreen.** Edge labels are laid out in reserved lanes so they never
+  collide with a state box, which costs width: the `intconst` subset construction (21 states, 210
+  transitions) fits at a small zoom in a panel. It is readable at any zoom and in fullscreen — but
+  at fit-zoom in the inline panel it is still a thicket.
 
 ## Documentation
 

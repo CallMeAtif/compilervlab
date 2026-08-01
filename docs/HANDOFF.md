@@ -13,7 +13,7 @@ Commands run in this tree, at the time of writing:
 | `npx vitest run` | **45 files, 611 tests, all passing** |
 | `pnpm typecheck` (`tsc --noEmit` × trace, core, app) | clean (and `packages/app/e2e`) |
 | `pnpm build` (`pnpm --filter app build`) | green; chunk-size warning only (elkjs 1.44 MB / 438 kB gzip, CodeMirror 526 kB) |
-| `npx playwright test` | **26 tests, all passing**, 0 skipped (against `vite preview`) |
+| `pnpm test:e2e` (`npx playwright test`) | **32 tests, all passing**, 0 skipped (against `vite preview`) |
 | `pnpm dev` | serves on http://localhost:5173 (HTTP 200, app shell renders) |
 | `pnpm exec jiti scripts/gen-textbook-map.ts` | 52 of 53 configured traces build, 261 k recorded steps, 0 steps without a citation |
 
