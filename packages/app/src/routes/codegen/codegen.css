@@ -1,0 +1,75 @@
+/**
+ * Phase-local styles for /codegen.
+ *
+ * Only existing design tokens are used (see styles/theme.css) — this file adds
+ * no new visual language, it only expresses two things Tailwind utilities
+ * cannot: the [artifact | TracePanel] grid (which needs to reach inside
+ * TracePanel's own box) and the patterned, arrowhead-free interference edges.
+ */
+
+/* ── [visualization | TracePanel] split ────────────────────────────────────
+   TracePanel takes the route's own stepper, so the artifact is a plain grid
+   SIBLING of the panel — no `display: contents` lift required any more.
+   Under lg everything stacks vertically.                                     */
+.cg-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .cg-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 1rem;
+  }
+}
+
+/* ── Interference / coloring graph ─────────────────────────────────────────
+   The graph is UNDIRECTED: React Flow default edges carry no marker, so no
+   arrowheads are drawn. Edges the trace has not added yet stay dashed —
+   pattern, not color, distinguishes "not yet derived" from "derived".
+   The shared visited/current emphasis now lands on its own (styles/index.css
+   keeps those rules unlayered, so xyflow's stylesheet no longer outranks
+   them); only this phase-specific "pending" pattern lives here.              */
+.cg-graph .react-flow__edge:not(.elk-edge-current):not(.elk-edge-visited) .react-flow__edge-path {
+  stroke: var(--line-strong);
+  stroke-dasharray: 3 5;
+  opacity: 0.7;
+}
+
+/* ── Patterned fills (shape/pattern signifiers, never color alone) ───────── */
+.cg-hatch-accent {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--accent-soft),
+    var(--accent-soft) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+}
+
+.cg-hatch-warn {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--warn-soft),
+    var(--warn-soft) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+/* Live-range cells: a solid bar means "live-in here". The left/right caps get
+   rounded corners so a range reads as one bar rather than N squares. */
+.cg-live {
+  background: var(--accent);
+}
+.cg-live-start {
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+}
+.cg-live-end {
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+}

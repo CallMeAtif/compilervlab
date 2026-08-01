@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+coverage/
+
+# Playwright: the config points outputDir at node_modules/.cache, but the HTML
+# reporter and the default outputDir both write here if anyone enables them.
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Vendored AI tooling, not project source. Reinstall with:
+#   npx ui-ux-pro-max-cli init --ai claude
+.claude/skills/
+__pycache__/

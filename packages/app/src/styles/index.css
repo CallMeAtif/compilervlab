@@ -1,0 +1,300 @@
+@import 'tailwindcss';
+@import './theme.css';
+
+/* Dark mode = class strategy on <html> (lib/theme.tsx toggles it). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-control: var(--control);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-on-ok: var(--on-ok);
+  --color-err: var(--err);
+  --color-err-soft: var(--err-soft);
+  --color-on-err: var(--on-err);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-on-warn: var(--on-warn);
+  --color-code: var(--code-bg);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /*
+   * TYPE SCALE. Two ladders that share a baseline rhythm.
+   *
+   *   prose   15/1.55 body · 14 (text-sm) secondary · 16-18 (text-base/lg) heads
+   *   mono    13 (text-code) listings — asm, TAC, source strips
+   *           12 (text-xs)   dense grids — ACTION/GOTO, symbol tables
+   *           11 (text-2xs)  chips, citations, cell annotations, axis labels
+   *           10 (text-3xs)  counters/badges ONLY, never a sentence
+   *
+   * `text-2xs` and `text-3xs` exist so the 160+ `text-[11px]` / `text-[10px]`
+   * literals scattered through the phase views have one place to change.
+   */
+  --text-3xs: 0.625rem;
+  --text-3xs--line-height: 1.4;
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.45;
+  --text-code: 0.8125rem;
+  --text-code--line-height: 1.5;
+
+  /* Elevation is applied through the `.overlay-panel` component class below,
+     not a Tailwind utility, so `--shadow-overlay` stays a plain theme.css var
+     (a `@theme inline` entry pointing at itself would be circular). */
+  --ease-emphasis: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-[15px] text-ink antialiased;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /*
+   * Ligatures OFF in every monospace context. This app *teaches* the exact
+   * character sequences `->`, `!=`, `&&`, `<=` and the comment delimiters as
+   * tokens; a font that fuses them into a single glyph makes the token stream
+   * disagree with the source it came from.
+   */
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono,
+  .cm-editor {
+    font-variant-ligatures: none;
+    font-feature-settings: 'liga' 0, 'calt' 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * One focus ring everywhere. NOTE: no `border-radius` here — setting it would
+   * reshape the focused element itself (an 8px-rounded button snapping to 2px
+   * on Tab). Outlines already follow the element's own radius.
+   */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--src-highlight);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /*
+     * `!important` inside a cascade layer outranks unlayered `!important`,
+     * which is what lets this reach @xyflow, CodeMirror and Radix — all of
+     * which ship unlayered stylesheets.
+     */
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * ELEVATION — exactly two levels.
+   *   flat:    `border border-line bg-surface` (cards, panels, tables)
+   *   overlay: `.overlay-panel` (tooltip, popover, select, dialog)
+   * Nothing else casts a shadow, so a shadow always means "floats above".
+   */
+  .overlay-panel {
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  /*
+   * Keyboard-highlighted row in a listbox/menu. `bg-raised` alone measures
+   * ~1.1:1 against `surface` in BOTH themes — invisible as a keyboard
+   * affordance — so every highlighted menu item pairs `bg-accent-soft` with
+   * `shadow-[inset_2px_0_0_var(--accent)]`: a bar on the leading edge, which
+   * survives greyscale. (Written as utilities at each call site because the
+   * trigger is a Radix `data-[highlighted]` variant.)
+   */
+
+  /* Wide artifact (ACTION/GOTO table, asm listing, CFG) scrolls in its OWN box
+     and never widens the page. */
+  .artifact-scroll {
+    overflow: auto;
+    overscroll-behavior-x: contain;
+    max-width: 100%;
+  }
+
+  /* Conflict cells in ACTION/GOTO tables: patterned, not color-only. */
+  .cell-conflict {
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--err-soft),
+      var(--err-soft) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+    box-shadow: inset 0 0 0 1px var(--err);
+  }
+
+  /* CodeMirror span highlighting (CodeStrip / editor decorations). */
+  .cm-src-highlight {
+    background: var(--src-highlight);
+    border-radius: 2px;
+    box-shadow: 0 1px 0 var(--accent);
+  }
+
+  /* Zero-width caret decoration (CodeStrip `carets` / zero-width spans). A span
+     with start === end has nothing to paint, so it is drawn as a cursor rule
+     between the two characters instead of being silently dropped. */
+  .cm-src-caret {
+    display: inline-block;
+    width: 0;
+    height: 1.15em;
+    margin-inline: -1px;
+    border-left: 2px solid var(--accent);
+    vertical-align: text-bottom;
+  }
+
+  /* ElkGraph node states — emphasis only, never layout (PLAN.md rule). */
+  .elk-node {
+    @apply rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-xs text-ink;
+    transition:
+      box-shadow var(--dur) var(--ease),
+      border-color var(--dur) var(--ease),
+      background-color var(--dur) var(--ease),
+      opacity var(--dur) var(--ease);
+  }
+  /* Nodes whose caller DECLARED a size (width/height or `measure`) fill the box
+     ELK reserved for them, so multi-line content and edge endpoints agree.
+     Nodes that let ElkGraph estimate their box keep shrink-to-fit sizing. */
+  .elk-node.is-sized {
+    width: 100%;
+    min-height: 100%;
+  }
+  .elk-node.is-visited {
+    @apply border-ink-faint bg-raised;
+  }
+  .elk-node.is-current {
+    border-color: var(--accent);
+    /* double ring = shape signifier for "current", not color alone */
+    box-shadow:
+      0 0 0 2px var(--surface),
+      0 0 0 4px var(--accent);
+  }
+  /* Progressive reveal: `hiddenIds` marks what the trace has not built yet.
+     0.25 (not 0.1) keeps the reserved position legible as "coming", which is
+     the teaching point; below ~0.2 it reads as a rendering artefact. */
+  .elk-node.is-hidden {
+    opacity: 0.25;
+  }
+}
+
+/*
+ * React Flow overrides — DELIBERATELY UNLAYERED.
+ *
+ * `@xyflow/react/dist/style.css` is imported from ElkGraph.tsx as a plain
+ * stylesheet, so it lands OUTSIDE every cascade layer. An unlayered rule beats
+ * any layered rule no matter how specific, so these selectors are inert when
+ * written inside `@layer components` — which is where they used to live, and
+ * why edge emphasis never rendered. Kept unlayered (and more specific than
+ * xyflow's own `.react-flow__edge-path`) they win normally, on specificity.
+ */
+.react-flow__edge.elk-edge-current .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
+.react-flow__edge.elk-edge-visited .react-flow__edge-path {
+  stroke: var(--ink-faint);
+  stroke-width: 1.75;
+}
+.react-flow__edge.elk-edge-hidden {
+  opacity: 0.22;
+}
+.react-flow__attribution {
+  background: transparent;
+  color: var(--ink-faint);
+}
+/*
+ * CodeMirror gutter — ALSO deliberately unlayered, and for the same reason:
+ * @codemirror/view injects its themes as plain <style> elements, so a layered
+ * rule can never reach them. Measured, the bundled @uiw dark theme paints line
+ * numbers at #7d8799 on #282c34 = 3.61:1, under AA for text. Only the colour is
+ * overridden (background stays transparent) so the editor keeps whichever
+ * surface its own theme chose: `ink-faint` then measures 4.86:1 dark and
+ * 5.26:1 light.
+ */
+/*
+ * The editor surface is OURS: both call sites (`components/viz/CodeStrip` and
+ * the overview editor) already wrap CodeMirror in a `bg-code` box, so making
+ * the editor transparent both restores the token colour and lifts every syntax
+ * colour's contrast — the bundled dark theme's own #282c34 was the reason its
+ * comment (#7d8799, 3.86:1) and keyword (#e06c75, 4.38:1) colours failed AA.
+ * On `--code-bg` the whole palette measures 5.05:1 or better.
+ */
+.cm-editor,
+.cm-editor .cm-scroller {
+  background-color: transparent;
+}
+.cm-editor .cm-gutters {
+  background-color: transparent;
+  border-right: 1px solid var(--line);
+  color: var(--ink-faint);
+}
+.cm-editor .cm-lineNumbers .cm-gutterElement {
+  color: var(--ink-faint);
+}
+.cm-editor .cm-activeLineGutter {
+  background-color: transparent;
+  color: var(--ink);
+}
+
+/* xyflow's own zoom/fit buttons: token colours + a real focus ring, and big
+   enough to hit (its default is 26px). */
+.react-flow__controls-button {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  fill: var(--ink-muted);
+  width: 28px;
+  height: 28px;
+}
+.react-flow__controls-button:hover {
+  background: var(--raised);
+  fill: var(--ink);
+}
+.react-flow__controls {
+  box-shadow: var(--shadow-overlay);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}

@@ -1,0 +1,10 @@
+{
+  "//": "Editor/type-check config for the Playwright suite. It is NOT part of the app build (packages/app/tsconfig.json includes only `src`) and NOT part of vitest (which collects packages/*/test/**). Run it with: npx tsc --noEmit -p packages/app/e2e. `playwright.config.ts` is excluded on purpose: it reads process.env and the workspace installs no @types/node.",
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["."]
+}

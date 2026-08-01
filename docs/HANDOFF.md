@@ -11,8 +11,9 @@ Commands run in this tree, at the time of writing:
 | Command | Result |
 | --- | --- |
 | `npx vitest run` | **45 files, 611 tests, all passing** |
-| `pnpm typecheck` (`tsc --noEmit` × trace, core, app) | clean |
+| `pnpm typecheck` (`tsc --noEmit` × trace, core, app) | clean (and `packages/app/e2e`) |
 | `pnpm build` (`pnpm --filter app build`) | green; chunk-size warning only (elkjs 1.44 MB / 438 kB gzip, CodeMirror 526 kB) |
+| `npx playwright test` | **26 tests, all passing**, 0 skipped (against `vite preview`) |
 | `pnpm dev` | serves on http://localhost:5173 (HTTP 200, app shell renders) |
 | `pnpm exec jiti scripts/gen-textbook-map.ts` | 52 of 53 configured traces build, 261 k recorded steps, 0 steps without a citation |
 
@@ -181,6 +182,54 @@ Four workstreams, run concurrently in this tree:
 
 Because those three ran concurrently with this one, the chunk sizes and test counts above are what
 *this* workstream measured; re-run `pnpm test` and `pnpm build` for the final numbers.
+
+## Gate E — final acceptance audit (done)
+
+The whole app driven in a real browser (Playwright against `vite preview`) as a user would: the gcd
+acceptance sample through all six phases, every transport control on every phase, and a deliberate
+attempt to break it — empty program, syntax error, lexical error, a 40-branch program, phase switch
+mid-playback, algorithm switch mid-playback, `?step=` past the end / negative / non-numeric, an
+unknown `?algo=`, 375 px viewport, six theme flips during playback, 50 hammered next/prev, twelve
+hammered Compile clicks, browser Back/Forward, and a second compile without reloading.
+
+**Verified end to end:** 95 tokens → 66 AST nodes → 8 symbols / 6 scopes → 28 quads → 26 quads after
+optimization → exactly those 26 quads tiled by code generation → 67 asm lines, and the emitted x86-64
+executed in the Run tab reports **`main returned 12`** — gcd(48, 36). No console errors, no HTTP
+errors, no horizontal overflow at 375/1024/1600.
+
+**Fixed here:**
+
+- `lib/urlState.ts` — a debounced `?step=` write firing while a lazy route transition was suspended
+  called `setSearchParams(…, { replace: true })` from the still-mounted OLD route, replacing the
+  just-pushed history entry and bouncing the reader back to the phase they had left. Pending writes
+  now record the pathname they were scheduled for and are dropped if it is no longer the one on
+  screen. Regression test: `e2e/navigation.spec.ts` ("leaving a phase right after stepping…").
+- `lib/useStepper.ts` — `isErrorEvent` matched only a `kind` containing "error", so the semantic and
+  codegen passes (which report through `{ kind: 'diagnostic' }`) never stopped playback, contradicting
+  the UI's own promise that errors are pedagogical stopping points. Diagnostics with
+  `severity: 'error'` now stop it; warnings stay advisory. Regression test:
+  `e2e/error-pedagogy.spec.ts`.
+- `routes/semantic/SemanticView.tsx` told the reader to "press Compile in the top bar" — there is no
+  Compile button in the top bar. All six phase routes now offer the same working `<CompileCta/>` in
+  their cold state (previously only `/codegen` and `/syntax` did).
+- `routes/syntax` and `routes/codegen` render their own copies of PhasePage's header and had drifted:
+  both now carry the `N/6` pipeline ordinal, and syntax's ten-algorithm rail is a proper
+  roving-tabindex tablist (one tab stop, Left/Right/Home/End, focus follows selection).
+- `App.tsx` / `TopBar.tsx` — `<main>` gained `id="main" tabIndex={-1}`, so the skip link is a plain
+  fragment link instead of a JS-only focus move.
+- `components/TracePanel.tsx` — the shared-stepper form built and discarded a second `useStepper`,
+  which is three O(steps) passes and two step-length arrays per trace change (≈40 000 events on the
+  truncated canonical LR(1) trace). Split into two components so the discarded stepper never exists.
+- `index.html` gained an inline data-URI favicon (the only console error a real browser produced) and
+  a description meta; `.gitignore` gained the Playwright report/output directories.
+- Interactive controls inside the phase routes moved from `border-line` (1.25:1 on `surface`) to the
+  `--control` token, which holds ≥3:1 — WCAG 1.4.11.
+
+**Found and documented rather than fixed** (see the README's *Known limitations*): the optimizer runs
+each pass once in a fixed order with no fixpoint, so `t1 = 48 + 0` survives; a page reload loses the
+compiled program, so a deep link restores the view but needs one Compile press; and CodeMirror's
+bundled light theme paints C type keywords at 4.11:1, which cannot be fixed without declaring
+`@codemirror/language` and `@lezer/highlight`.
 
 ## Known limitations (kept deliberately)
 

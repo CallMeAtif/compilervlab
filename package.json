@@ -1,0 +1,19 @@
+{
+  "name": "compiler-virtual-lab",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --filter app dev",
+    "build": "pnpm --filter app build",
+    "preview": "pnpm --filter app preview",
+    "test": "vitest run",
+    "test:e2e": "pnpm --filter app build && playwright test",
+    "typecheck": "tsc --noEmit -p packages/trace && tsc --noEmit -p packages/core && tsc --noEmit -p packages/app"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "fast-check": "^3.23.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

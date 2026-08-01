@@ -1,0 +1,141 @@
+/**
+ * Compiler Virtual Lab — design tokens (both themes).
+ *
+ * ── Identity ────────────────────────────────────────────────────────────────
+ * A precise, calm, technical teaching instrument: a well-set textbook that
+ * happens to be a developer tool. Chrome is quiet, content is dense but never
+ * cramped, and every emphasis carries a SHAPE as well as a colour so the same
+ * six-phase vocabulary reads identically in light mode, dark mode and
+ * greyscale.
+ *
+ * ── Semantic vocabulary (identical across all six phases) ───────────────────
+ *   accent / accent-soft   the CURRENT thing — the step's focus. Always drawn
+ *                          as fill + ring/bar, never fill alone.
+ *   raised + ink-faint     VISITED / already-derived. Recessive, never accent.
+ *   ink-faint @ opacity    NOT YET DERIVED (progressive reveal). Position is
+ *                          reserved; only opacity changes, so nothing moves.
+ *   ok                     accepted / valid / added / no diagnostics  (+ check
+ *                          glyph, `+`, double ring on accepting states)
+ *   warn                   stale / spilled / changed / truncated  (+ clock or
+ *                          `~` glyph, DASHED border, hatched fill)
+ *   err                    error / conflict / removed  (+ octagon or `−`
+ *                          glyph, 45° hatch for conflict cells, strikethrough)
+ *   line                   content separator (table rules, card edges)
+ *   control                the outline of an INTERACTIVE control. Held at
+ *                          >= 3:1 on every surface it sits on (WCAG 1.4.11) —
+ *                          `line` is deliberately below that and must never be
+ *                          the only thing identifying a button or input.
+ *
+ * ── Contrast contract (measured, both themes; see styles/README.md) ─────────
+ *   ink        >= 13:1 on canvas / surface / raised / code / *-soft
+ *   ink-muted  >=  5.9:1 on canvas / surface / raised
+ *   ink-faint  >=  4.6:1 on canvas / surface / raised  (AA body text).
+ *                  NOT rated on accent-soft — use ink-muted there.
+ *   accent     >=  5.5:1 on canvas / surface / raised / accent-soft
+ *   ok/warn/err>=  5.3:1 on their own *-soft AND on canvas / surface
+ *   on-*       >=  6.2:1 on the solid colour it labels
+ *   control    >=  3.1:1 on canvas / surface / raised (non-text, 1.4.11)
+ *
+ * ── Type ────────────────────────────────────────────────────────────────────
+ *   System sans for prose and chrome; ui-monospace for every artifact — token
+ *   tables, automata labels, TAC, ACTION/GOTO cells, x86-64. Tabular figures
+ *   everywhere and ligatures OFF in mono, because `->`, `!=` and `&&` are
+ *   characters being taught, not typography. Scale in styles/index.css.
+ *
+ * ── Motion ──────────────────────────────────────────────────────────────────
+ *   --dur-fast (110ms) state echo, --dur (170ms) emphasis moves, --ease is a
+ *   single decelerating curve. Only colour/shadow/opacity/transform animate;
+ *   layout is computed once and never animated (PLAN.md layout-stability rule).
+ *   prefers-reduced-motion collapses every transition and animation.
+ */
+
+:root {
+  /* surfaces — canvas < surface (cards) < raised (headers, chips, hovers) */
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --raised: #eef0f4;
+  --line: #e3e6ec;
+  --line-strong: #adb5c8;
+  /* >= 3:1 on canvas/surface/raised: outlines of buttons, inputs, selects */
+  --control: #7d879f;
+
+  /* text */
+  --ink: #1a1d27;
+  --ink-muted: #545b6e;
+  --ink-faint: #606676;
+
+  /* accent (indigo) = "current" */
+  --accent: #4f46e5;
+  --accent-strong: #4338ca;
+  --accent-soft: #e5e7ff;
+  --on-accent: #ffffff;
+
+  /* status */
+  --ok: #0f6f33;
+  --ok-soft: #d9f2e3;
+  --on-ok: #ffffff;
+  --err: #b42318;
+  --err-soft: #fde9e7;
+  --on-err: #ffffff;
+  --warn: #92510a;
+  --warn-soft: #fdf0d9;
+  --on-warn: #ffffff;
+
+  /* code */
+  --code-bg: #f3f4f8;
+  --src-highlight: rgba(79, 70, 229, 0.16);
+
+  --ring: var(--accent);
+  --scrim: rgba(15, 18, 26, 0.5);
+
+  /* elevation — exactly two levels: flat cards, and overlays */
+  --shadow-overlay:
+    0 1px 2px rgba(15, 18, 26, 0.06), 0 8px 24px -6px rgba(15, 18, 26, 0.18);
+}
+
+.dark {
+  --canvas: #0e1116;
+  --surface: #151a22;
+  --raised: #1c222d;
+  --line: #29303d;
+  --line-strong: #525c72;
+  --control: #657191;
+
+  --ink: #e8eaf2;
+  --ink-muted: #a6adc0;
+  --ink-faint: #9098ae;
+
+  --accent: #8b93f8;
+  --accent-strong: #a5b4fc;
+  --accent-soft: #2b2f55;
+  --on-accent: #0e1116;
+
+  --ok: #47c682;
+  --ok-soft: #12301f;
+  --on-ok: #0e1116;
+  --err: #f28b82;
+  --err-soft: #3a1a16;
+  --on-err: #0e1116;
+  --warn: #e0aa4e;
+  --warn-soft: #33270f;
+  --on-warn: #0e1116;
+
+  --code-bg: #11151d;
+  --src-highlight: rgba(139, 147, 248, 0.24);
+
+  --ring: var(--accent);
+  --scrim: rgba(0, 0, 0, 0.6);
+
+  /* Shadows barely read on a near-black canvas, so an overlay also gets a
+     brighter edge — the border is what separates it from the page in dark. */
+  --shadow-overlay:
+    0 0 0 1px rgba(255, 255, 255, 0.04), 0 2px 4px rgba(0, 0, 0, 0.5),
+    0 12px 32px -8px rgba(0, 0, 0, 0.7);
+}
+
+/* Motion + geometry are theme-independent. */
+:root {
+  --dur-fast: 110ms;
+  --dur: 170ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}

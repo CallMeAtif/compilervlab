@@ -1,0 +1,115 @@
+/*
+ * Lexical-analysis route styles.
+ *
+ * Everything here is namespaced under `.lex-*` wrappers so it can only ever
+ * affect this route — the shared viz primitives and the other five phase
+ * routes are untouched. One job only: shape-not-colour signifiers — double-ring
+ * accept states, dashed dead state, patterned partition swatches.
+ *
+ * Progressive reveal used to live here too, as `.lex-reveal` opacity rules. It
+ * is now the shared `hiddenIds` prop of <ElkGraph/> (styles/index.css), so the
+ * graph is still laid out exactly once and stepping still never moves a node
+ * (PLAN.md layout-stability rule) — without route-local CSS reaching into the
+ * shared primitive's internals.
+ */
+
+/* ── automaton node shapes (never colour alone) ──────────────────────────── */
+
+.lex-graph .elk-node[data-kind='accept'],
+.lex-graph .elk-node[data-kind='start-accept'] {
+  /* double ring = accepting state, per Fig 3.34 / 3.36 conventions */
+  outline: 3px double var(--ink-faint);
+  outline-offset: 2px;
+}
+.lex-graph .elk-node[data-kind='start'],
+.lex-graph .elk-node[data-kind='start-accept'] {
+  border-left-width: 4px;
+  border-left-color: var(--ink-muted);
+}
+.lex-graph .elk-node[data-kind='dead'] {
+  border-style: dashed;
+}
+
+/* ── partition group swatches (colour AND pattern) ───────────────────────── */
+
+.lex-swatch {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: none;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  background-color: var(--raised);
+}
+
+.lex-grp-0 {
+  background-color: var(--accent-soft);
+}
+.lex-grp-1 {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--ink-faint) 0 2px,
+    transparent 2px 5px
+  );
+}
+.lex-grp-2 {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--accent) 0 2px,
+    transparent 2px 5px
+  );
+}
+.lex-grp-3 {
+  background-image: radial-gradient(var(--ink-faint) 1.2px, transparent 1.3px);
+  background-size: 4px 4px;
+}
+.lex-grp-4 {
+  background-image:
+    repeating-linear-gradient(0deg, var(--ink-faint) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, var(--ink-faint) 0 1px, transparent 1px 4px);
+}
+.lex-grp-5 {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--accent) 0 2px,
+    transparent 2px 5px
+  );
+}
+.lex-grp-6 {
+  background-image: repeating-linear-gradient(
+    0deg,
+    var(--ink-muted) 0 2px,
+    transparent 2px 6px
+  );
+}
+.lex-grp-7 {
+  background-image: radial-gradient(var(--accent) 1.4px, transparent 1.5px);
+  background-size: 5px 5px;
+}
+
+/* ── input tape (§3.2 two-pointer buffer) ────────────────────────────────── */
+
+.lex-tape-cell {
+  display: inline-flex;
+  min-width: 1.05ch;
+  justify-content: center;
+  border-bottom: 2px solid transparent;
+  padding: 1px 0;
+  white-space: pre;
+}
+.lex-tape-lexeme {
+  background: var(--src-highlight);
+  border-bottom-color: var(--accent);
+}
+.lex-tape-retracted {
+  text-decoration: line-through;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--warn-soft) 0 3px,
+    transparent 3px 6px
+  );
+  border-bottom-color: var(--warn);
+}
+.lex-tape-forward {
+  box-shadow: inset 2px 0 0 var(--accent);
+}

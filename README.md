@@ -326,11 +326,34 @@ These are real, and we would rather say so than let you discover them.
 - The x86-64 output is an **educational subset** in AT&T syntax, executed by our own interpreter. It
   is not assembled or linked, and there is no instruction scheduling or peephole pass.
 
+**Optimizer**
+
+- **Each pass runs exactly once, in the fixed order** `const-fold → const-prop → copy-prop → cse →
+  licm → dce` — there is no fixpoint loop over the pipeline. That is deliberate (the phase teaches
+  one pass at a time, with a before/after diff per pass), but it means an opportunity a *later* pass
+  creates for an *earlier* one is left on the table. In the gcd sample, `t1 = x + 0` is not foldable
+  when const-folding runs; const-propagation then turns it into `t1 = 48 + 0`, and no second folding
+  pass comes round to finish it. A real compiler would iterate; this one shows you why it has to.
+
 **Front end / UI**
 
+- **A page reload loses the compiled program.** The store is in memory only — nothing is written to
+  `localStorage` and the source is not encoded in the URL. A deep link (`/codegen?tab=color&step=40`)
+  therefore restores the *view* — phase, algorithm, tab, step — but not the *program*: the page opens
+  on its "Compile a program to begin" card, whose Compile button re-runs the pipeline on the default
+  example and then honours the `?step=` you arrived with. Sharing a link to your own edited source is
+  not possible. This follows from the explicit-compile rule (edits never recompile behind your back),
+  but it is a real limit of the deep links, not a feature.
+- **One editor token misses WCAG AA in the light theme.** CodeMirror's bundled light theme paints C
+  type keywords (`int`, `float`, `char`, `void`) at `#008855`, which measures 4.11:1 on the `--code-bg`
+  surface — under the 4.5:1 required for body text. Every other token in both themes passes (light
+  worst case otherwise 5.4:1, dark 4.8:1). The fix is to stop using the bundled themes and ship a
+  HighlightStyle derived from our own tokens, which needs `@codemirror/language` and `@lezer/highlight`
+  declared in `packages/app/package.json`.
 - The **transformed C grammar is not fully LL(1)** — the dangling `else` and the `FuncDef` vs
   `VarDecl` prefix survive left factoring. The LL(1) views show those conflict cells rather than
   hiding them, and the top-down parsers use the documented disambiguation.
+
 - Keyboard shortcuts are **focus-scoped** to the step controls (deliberate: the editor needs the
   arrow keys). The scrubber's section ticks ignore the slider thumb's width — cosmetic.
 - `elkjs` is a **1.4 MB** chunk (438 kB gzipped) and CodeMirror another 526 kB. Both are split out
