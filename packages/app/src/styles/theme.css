@@ -57,7 +57,15 @@
  * luminance so nothing glares, and the accent is a restrained ink blue whose
  * only job is to say "this is the current step".
  */
+/* ── Somaiya brand — landing page & auth pages only ────────────────────────
+   These tokens are deliberately SEPARATE from the compiler-lab palette so the
+   two visual identities never bleed into each other. */
 :root {
+  --somaiya: #8B0000;
+  --somaiya-dark: #6B0000;
+  --somaiya-light: #fdf2f2;
+  --somaiya-pink: #f8e8e8;
+
   /* surfaces — `surface` is the PAGE, the sheet everything sits on; regions
      are separated by rules and whitespace, not by a lighter box on a darker
      field (docs/EDITORIAL.md rule 4). `raised` is interactive chrome only. */
@@ -114,6 +122,10 @@
  * accent is desaturated UP, not inverted (§6 color-dark-mode).
  */
 .dark {
+  --somaiya: #c0392b;
+  --somaiya-dark: #a93226;
+  --somaiya-light: #2c1010;
+  --somaiya-pink: #3b1515;
   --canvas: #0f1216;
   --surface: #151920;
   --raised: #1d222b;

@@ -31,7 +31,7 @@ const quadCount = (fns: ReadonlyArray<{ quads: unknown[] }>): number =>
 export const PHASES: readonly PhaseInfo[] = [
   {
     phase: 'lex',
-    path: '/lex',
+    path: '/lab/lex',
     title: 'Lexical Analysis',
     short: 'Lex',
     blurb: 'Regex → NFA → DFA → minimized DFA, and DFA-driven tokenization of the source.',
@@ -52,7 +52,7 @@ export const PHASES: readonly PhaseInfo[] = [
   },
   {
     phase: 'syntax',
-    path: '/syntax',
+    path: '/lab/syntax',
     title: 'Syntax Analysis',
     short: 'Syntax',
     blurb: 'FIRST/FOLLOW, LL(1), recursive descent, LR(0)/SLR, LR(1)/LALR — tables, automata, and the live parse.',
@@ -76,7 +76,7 @@ export const PHASES: readonly PhaseInfo[] = [
   },
   {
     phase: 'semantic',
-    path: '/semantic',
+    path: '/lab/semantic',
     title: 'Semantic Analysis',
     short: 'Semantic',
     blurb: 'Scoped symbol tables, name resolution, and type checking over the AST.',
@@ -95,7 +95,7 @@ export const PHASES: readonly PhaseInfo[] = [
   },
   {
     phase: 'ir',
-    path: '/ir',
+    path: '/lab/ir',
     title: 'Intermediate Code',
     short: 'IR',
     blurb: 'AST → three-address code: quadruples (canonical), triples, indirect triples.',
@@ -115,7 +115,7 @@ export const PHASES: readonly PhaseInfo[] = [
   },
   {
     phase: 'opt',
-    path: '/opt',
+    path: '/lab/opt',
     title: 'Optimization',
     short: 'Opt',
     blurb: 'Basic blocks, CFGs, and classic passes with before/after diffs.',
@@ -142,7 +142,7 @@ export const PHASES: readonly PhaseInfo[] = [
   },
   {
     phase: 'codegen',
-    path: '/codegen',
+    path: '/lab/codegen',
     title: 'Code Generation',
     short: 'Codegen',
     blurb: 'Instruction selection to x86-64, liveness, interference graph coloring, spills.',

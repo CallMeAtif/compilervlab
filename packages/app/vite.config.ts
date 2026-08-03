@@ -26,6 +26,7 @@ function vendorChunk(id: string): string | undefined {
   if (!id.includes('node_modules')) return undefined;
   // pnpm ids look like …/node_modules/.pnpm/react@19…/node_modules/react/index.js
   const pkgPath = id.split('node_modules/').pop() ?? '';
+  if (/^(firebase|@firebase)\//.test(pkgPath)) return 'firebase';
   if (/^elkjs\//.test(pkgPath)) return 'elkjs';
   if (
     /^(@xyflow\/[^/]+|classcat|d3-(selection|zoom|drag|transition|interpolate|color|timer|dispatch|ease|path))\//.test(

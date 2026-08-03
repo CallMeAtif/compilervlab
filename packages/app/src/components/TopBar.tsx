@@ -8,11 +8,12 @@
  * The rail scrolls horizontally under lg; the theme toggle never scrolls away.
  */
 import { Link, NavLink } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
+import { LogOut, Moon, Sun } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useCompilationStore, stageInfo } from '../store/compilation';
 import { PHASES } from '../lib/phases';
 import { useTheme } from '../lib/theme';
+import { useAuth } from '../lib/auth';
 import { STATUS_META, StatusMark } from './StatusBadge';
 import { Tooltip } from './ui/Tooltip';
 
@@ -69,7 +70,7 @@ export function TopBar() {
       <div className="mx-auto max-w-450 px-3 sm:px-5">
         <div className="flex min-h-14 flex-col justify-center gap-0.5 py-1 lg:flex-row lg:items-center lg:gap-6 lg:py-0">
           <Link
-            to="/"
+            to="/lab"
             className="flex shrink-0 items-baseline gap-2 self-start rounded-sm py-1.5 lg:self-auto"
           >
             <span className="font-serif text-base font-semibold tracking-tight text-ink">
@@ -141,9 +142,36 @@ export function TopBar() {
 
             <span aria-hidden className="h-5 w-px shrink-0 bg-line" />
             <ThemeToggle />
+            <UserMenu />
           </div>
         </div>
       </div>
     </header>
+  );
+}
+
+// ── User menu ────────────────────────────────────────────────────────────────
+
+function UserMenu() {
+  const { user, signOut } = useAuth();
+  if (!user) return null;
+
+  // Show the local-part of the email (everything before @)
+  const handle = user.email?.split('@')[0] ?? 'User';
+
+  return (
+    <Tooltip content={`Signed in as ${user.email ?? ''}. Click to sign out.`}>
+      <button
+        type="button"
+        onClick={() => void signOut()}
+        aria-label={`Signed in as ${user.email ?? ''}. Click to sign out.`}
+        className="flex h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-sm px-2 text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+      >
+        <span className="hidden max-w-[8rem] truncate font-mono text-2xs sm:inline">
+          {handle}
+        </span>
+        <LogOut aria-hidden className="size-4" />
+      </button>
+    </Tooltip>
   );
 }

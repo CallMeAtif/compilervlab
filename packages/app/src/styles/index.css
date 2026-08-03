@@ -3,6 +3,8 @@
 @import '@fontsource-variable/source-serif-4';
 @import '@fontsource-variable/source-serif-4/opsz-italic.css';
 @import '@fontsource-variable/jetbrains-mono';
+/* Inter: used by the landing page / auth pages for a clean, modern sans-serif. */
+@import '@fontsource-variable/inter';
 @import './theme.css';
 
 /* Dark mode = class strategy on <html> (lib/theme.tsx toggles it). */
@@ -33,6 +35,15 @@
   --color-on-warn: var(--on-warn);
   --color-code: var(--code-bg);
 
+  /* Somaiya brand tokens (landing + auth pages) */
+  --color-somaiya: var(--somaiya);
+  --color-somaiya-dark: var(--somaiya-dark);
+  --color-somaiya-light: var(--somaiya-light);
+  --color-somaiya-pink: var(--somaiya-pink);
+
+  /* Inter: for landing and auth pages (class: font-inter) */
+  --font-inter: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
   /*
    * TYPE. An editorial pairing, both bundled (no CDN — PLAN.md keeps the app
    * fully self-contained): Source Serif 4 sets prose and headings the way a
@@ -47,6 +58,29 @@
   --font-mono:
     'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', SFMono-Regular,
     Menlo, Consolas, monospace;
+
+  /* UI Animations */
+  --animate-fade-in: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-up: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
   /*
    * TYPE SCALE. Two ladders that share a baseline rhythm.
