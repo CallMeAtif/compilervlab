@@ -7,12 +7,7 @@
  */
 import { Cta } from './primitives';
 
-/**
- * `colophon` — the three mono lines of provenance (client-side, the edition
- * cited, the counts). They belong on /about, which is the evidence page; on the
- * landing page they were a third set of numbers competing with the demo.
- */
-export function SiteFooter({ colophon = true }: { colophon?: boolean }) {
+export function SiteFooter() {
   return (
     <footer className="mt-16 border-t border-line sm:mt-24">
       <div className="mx-auto max-w-[84rem] px-4 py-14 sm:px-6 sm:py-20">
@@ -47,13 +42,7 @@ export function SiteFooter({ colophon = true }: { colophon?: boolean }) {
             </p>
           </div>
 
-          {colophon && (
-            <ul className="font-mono text-2xs text-ink-faint">
-              <li>Runs client-side · compiler in a Web Worker</li>
-              <li className="mt-1">Aho, Lam, Sethi &amp; Ullman, 2nd edition · every step cited</li>
-              <li className="mt-1">147 LALR(1) states · 611 unit tests · 32 browser tests</li>
-            </ul>
-          )}
+
         </div>
       </div>
     </footer>

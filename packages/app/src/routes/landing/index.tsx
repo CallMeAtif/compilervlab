@@ -256,7 +256,7 @@ export default function LandingRoute() {
         </div>
       </main>
 
-      <SiteFooter colophon={false} />
+      <SiteFooter />
     </div>
   );
 }
