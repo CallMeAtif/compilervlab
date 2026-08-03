@@ -15,3 +15,10 @@ blob-report/
 #   npx ui-ux-pro-max-cli init --ai claude
 .claude/skills/
 __pycache__/
+
+# Local environment. A Firebase web config is not a secret (it ships in the
+# client bundle either way — access is controlled by Security Rules and the
+# authorized-domains list), but it is per-environment, so it stays out of git.
+.env
+.env.*
+!.env.example

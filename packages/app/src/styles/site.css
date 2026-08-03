@@ -1,0 +1,606 @@
+/**
+ * PUBLIC PAGES ONLY — `/` and `/about`.
+ *
+ * These are marketing pages, not lab routes: docs/EDITORIAL.md §0 (zero
+ * standing prose, one chrome band, max two columns) governs the six phase
+ * routes and deliberately does not apply here. What they DO share with the lab
+ * is the token system — every colour below is a `var()` from styles/theme.css,
+ * so both themes work and nothing is hard-coded.
+ *
+ * The identity: neutral slate stock, oxblood ink for "the thing happening now",
+ * Source Serif 4 for the display voice, Inter for the interface voice,
+ * JetBrains Mono for the compiler's voice. Crimson never decorates — it marks
+ * the active transform stage, the primary action, and nothing else.
+ *
+ * Written as plain CSS (no @apply) so the selectors are readable and their
+ * specificity is obvious: every rule here is a single class, so nothing in this
+ * file can silently cancel a utility on the same element.
+ */
+
+/* ── The spine ──────────────────────────────────────────────────────────────
+   The six phase sections are a real sequence, so the page draws the pipe: one
+   continuous hairline down the left gutter with the phase ordinals sitting ON
+   it. Below `lg` there is no room for a gutter, so the rule is not drawn and
+   the ordinal runs inline with the phase name instead. */
+.site-spine {
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .site-spine::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 1.09375rem; /* centre of the 2.25rem ordinal plate */
+    width: 1px;
+    background: var(--line);
+  }
+}
+
+/* The ordinal plate masks the rule behind it, so the pipe reads as passing
+   through each phase rather than as a line with numbers floating beside it. */
+.site-ordinal {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  padding-block: 0.375rem;
+  background: var(--canvas);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+}
+
+/* ── Display type ───────────────────────────────────────────────────────────
+   The one place type is allowed to be large. Optical-size axis pushed up so
+   Source Serif 4 sets its display cut, not its text cut. */
+.site-display {
+  font-family: var(--font-serif);
+  font-variation-settings: 'opsz' 32;
+  font-weight: 600;
+  font-size: clamp(2.125rem, 1.15rem + 4.2vw, 4rem);
+  line-height: 1.03;
+  letter-spacing: -0.032em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.site-heading {
+  font-family: var(--font-serif);
+  font-variation-settings: 'opsz' 20;
+  font-weight: 600;
+  font-size: clamp(1.375rem, 1.15rem + 0.9vw, 1.75rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Structural marker: mono, letterspaced, upper. It always carries information
+   (a phase name, an institution, a Dragon Book section) — never a mood. */
+.site-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.4;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.site-lede {
+  font-family: var(--font-inter);
+  font-size: clamp(1rem, 0.94rem + 0.28vw, 1.125rem);
+  line-height: 1.6;
+  color: var(--ink-muted);
+  max-width: 34em;
+}
+
+/* Interface-voice body copy. `code` inside it drops to the compiler's voice —
+   an identifier named in a sentence is the same object as the identifier in
+   the listing beside it, so it is set in the same face. */
+.site-body {
+  font-family: var(--font-inter);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--ink-muted);
+}
+
+.site-body code,
+.site-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  color: var(--ink);
+}
+
+/* ── Editorial prose (/about) ───────────────────────────────────────────────
+   Source Serif at reading size with a real measure. This is the whole point of
+   /about: it is a piece of writing, not a product grid. */
+.site-prose {
+  font-family: var(--font-serif);
+  font-variation-settings: 'opsz' 12;
+  font-size: 1.0625rem;
+  line-height: 1.68;
+  color: var(--ink);
+  max-width: 62ch;
+}
+
+.site-prose p + p {
+  margin-block-start: 1.1em;
+}
+
+.site-prose strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.site-prose a {
+  color: var(--somaiya-strong);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+/* One drop cap, on the opening paragraph, once per page. A textbook device for
+   a page about a textbook-faithful lab. Suppressed on narrow screens where a
+   three-line cap eats a third of the measure. */
+@media (min-width: 640px) {
+  .site-dropcap::first-letter {
+    float: inline-start;
+    font-family: var(--font-serif);
+    font-variation-settings: 'opsz' 40;
+    font-weight: 600;
+    font-size: 3.4em;
+    line-height: 0.82;
+    padding-inline-end: 0.09em;
+    padding-block-start: 0.06em;
+    color: var(--somaiya-strong);
+  }
+}
+
+/* Margin note: the evidence for the claim beside it. Mono and rule-led, so it
+   reads as an annotation on the prose rather than as more prose. */
+.site-note {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.55;
+  color: var(--ink-muted);
+  /* Structure, not emphasis: the rule says "this is an annotation". Crimson is
+     reserved for the thing happening now, and six margin notes are not that. */
+  border-inline-start: 2px solid var(--line-strong);
+  padding-inline-start: 0.75rem;
+}
+
+.site-note dt {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The Transform ──────────────────────────────────────────────────────────
+   The signature. A fixed-height well so a stage change never moves the page:
+   only opacity and transform animate (PLAN.md layout-stability rule). */
+.site-well {
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+}
+
+/*
+ * Mono listings. NOT Tailwind's `text-code`: `--color-code` and `--text-code`
+ * share the `code` name in this project's theme, so `text-code` resolves to a
+ * COLOUR utility (the code-well background) and silently loses its size — and
+ * paints text nearly invisible if it wins the cascade. These two classes carry
+ * the size instead. Row rhythm comes from line-height alone, so a listing's
+ * height is exactly (lines x line-height) and the well can be sized to fit it.
+ */
+.site-listing {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.62;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-listing-hero {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The Transform is a FROM → TO figure, not a slideshow: `max.c` stays on the
+ * left in every state and the right cell carries the form being produced. One
+ * grid definition drives both the header row and the well below it, so the tab
+ * rail sits over the output column and the source label over the source — the
+ * row reads left to right as `max.c → one of these`.
+ *
+ * Below `lg` there is no room for two columns of monospace, so the two stack
+ * and the divider turns from a vertical rule into a horizontal one.
+ */
+.site-transform-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.site-transform-from {
+  border-block-end: 1px solid var(--line);
+}
+
+@media (min-width: 1024px) {
+  .site-transform-grid {
+    grid-template-columns: 17.5rem minmax(0, 1fr);
+  }
+
+  .site-transform-from {
+    border-block-end: 0;
+    border-inline-end: 1px solid var(--line);
+  }
+}
+
+/*
+ * Both cells are sized to the TALLEST form and never change, so advancing can
+ * never move the page. Shorter forms are centred rather than stranded at the
+ * top, which also puts the four source lines on the same optical axis as the
+ * form they became.
+ *
+ * Measured: at 1024px+ the tallest is the x86-64 listing (10 rows, 231px). The
+ * token stream is 3 rows of chips (~180px) at that width. Below 1024px the
+ * columns stack and the token stream is the tallest — 4 rows at 640–1023px,
+ * 6 rows at 375px — so the floor is raised in two steps. Nothing ever scrolls.
+ */
+.site-stage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 3.5rem;
+}
+
+.site-stage-out {
+  min-height: 21rem;
+}
+
+@media (min-width: 640px) {
+  .site-stage-out {
+    min-height: 15rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .site-stage,
+  .site-stage-out {
+    min-height: 14.5rem;
+  }
+}
+
+/* Each listing row arrives a beat after the one above it, so a stage change
+   reads as the compiler emitting the form rather than as a slide swapping.
+   `--i` is the row index, set inline. */
+.site-row {
+  animation: site-row-in 320ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: calc(var(--i, 0) * 26ms);
+}
+
+@keyframes site-row-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 5px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The auto-advance clock, drawn as a rule that fills under the active stage
+   name. It is also the pause indicator: paused, it simply stops. */
+.site-clock {
+  transform-origin: left center;
+  animation: site-clock var(--site-dwell, 4200ms) linear both;
+}
+
+@keyframes site-clock {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Reveal on scroll ───────────────────────────────────────────────────────
+   Opacity + a 10px rise, once, when the section enters. Nothing reflows, and
+   the pre-reveal state is only ever applied when an IntersectionObserver is
+   actually going to clear it (see components/site/Reveal.tsx) so content can
+   never be stranded invisible. */
+.site-reveal {
+  opacity: 0;
+  transform: translate3d(0, 10px, 0);
+  transition:
+    opacity 520ms cubic-bezier(0.2, 0, 0, 1),
+    transform 520ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.site-reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The global rule in index.css collapses the transition to 0.01ms, which
+     would still leave a one-frame flicker; skip the offset entirely. */
+  .site-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ══ THE PIPELINE ═══════════════════════════════════════════════════════════
+   The pinned, scroll-driven stage on `/`. Only opacity, transform and filter
+   animate anywhere in this block; nothing here can reflow the page while it
+   moves, which is what lets a 3D canvas and seven cross-fading panels share a
+   sticky viewport at 60fps. */
+
+/* The advancing panel. Below `lg` it sits ON the canvas, so it earns a blurred
+   backdrop; at `lg` the canvas is inset to the right and the panel has clear
+   air beside it, so the blur — which would composite over WebGL every frame —
+   is dropped. */
+.site-panel {
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+  backdrop-filter: blur(12px);
+  padding: 0.75rem 0.875rem 0.875rem;
+  transition:
+    opacity 420ms var(--ease),
+    transform 420ms var(--ease);
+}
+
+@media (min-width: 1024px) {
+  .site-panel {
+    background: color-mix(in srgb, var(--canvas) 92%, transparent);
+    backdrop-filter: none;
+    padding: 1.05rem 1.2rem 1.2rem;
+  }
+}
+
+.site-panel-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Out-going panels stay mounted (so a cross-fade has something to fade from)
+   but leave the flow, so the active panel alone sets the block's height. They
+   are `inert` in the markup, which keeps them out of the tab order too. */
+.site-panel-out {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  pointer-events: none;
+}
+
+/* ── Typing ─────────────────────────────────────────────────────────────────
+   A real caret: crimson, one character wide, blinking on a step curve rather
+   than fading, because a fading caret reads as a glow. It slows once the line
+   is finished so it stops competing with the text it just wrote. */
+.site-caret {
+  display: inline-block;
+  inline-size: 0.6ch;
+  block-size: 1.05em;
+  margin-inline-start: 0.06em;
+  vertical-align: text-bottom;
+  background: var(--somaiya);
+  animation: site-caret 1s steps(1, end) infinite;
+}
+
+.site-caret-rest {
+  animation-duration: 1.6s;
+  opacity: 0.65;
+}
+
+@keyframes site-caret {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── Word-by-word display reveal ────────────────────────────────────────────
+   Words rise out of their own line box. The mask is `overflow: hidden` plus a
+   padding/margin pair, so descenders are not clipped while the word is at rest. */
+.site-split-word {
+  display: inline-block;
+  overflow: hidden;
+  padding-block-end: 0.14em;
+  margin-block-end: -0.14em;
+}
+
+.site-split-inner {
+  display: inline-block;
+  animation: site-word-in 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes site-word-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 105%, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Listing rows arriving ──────────────────────────────────────────────────
+   One shared entrance for token chips, AST rows and CFG blocks. `--i` or an
+   inline delay drives the stagger. */
+.site-pop {
+  animation: site-pop-in 380ms var(--ease) both;
+}
+
+@keyframes site-pop-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 7px, 0) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A pass firing: it lights, then it settles. Six of these in order IS the
+   optimiser running, and the fact that nothing changes is the point. */
+.site-fire {
+  animation: site-fire 620ms var(--ease) both;
+}
+
+@keyframes site-fire {
+  0% {
+    opacity: 0;
+    transform: translate3d(-4px, 0, 0);
+  }
+  40% {
+    opacity: 1;
+    color: var(--somaiya-strong);
+    border-color: var(--somaiya);
+    transform: none;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Loading the stage ──────────────────────────────────────────────────────
+   Themed, and honest about what it is: a scan line crossing an empty frame
+   while the WebGL chunk arrives. */
+.site-scan {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+.site-scan::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  block-size: 1px;
+  background: var(--somaiya);
+  animation: site-scan 1.5s var(--ease) infinite;
+}
+
+@keyframes site-scan {
+  from {
+    inset-block-start: 0;
+  }
+  to {
+    inset-block-start: 100%;
+  }
+}
+
+/* ── Action micro-interaction ───────────────────────────────────────────────
+   One sheen crossing the button on hover, drawn from the button's own text
+   colour so it works on both the crimson fill and the outline variant, and at
+   an alpha that cannot touch the label's contrast. */
+.site-cta-sheen {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 45%;
+  inset-inline-start: -50%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, currentColor 18%, transparent),
+    transparent
+  );
+  transform: skewX(-18deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.group:hover .site-cta-sheen {
+  animation: site-sheen 760ms var(--ease);
+}
+
+@keyframes site-sheen {
+  from {
+    inset-inline-start: -50%;
+    opacity: 1;
+  }
+  to {
+    inset-inline-start: 110%;
+    opacity: 0;
+  }
+}
+
+/* ── /about ─────────────────────────────────────────────────────────────────
+   Marginalia arrive from the margin they live in; the reading-progress rule is
+   the page's own scrollbar, drawn where a reader is already looking. */
+.site-note-in {
+  animation: site-note-in 620ms var(--ease) both;
+}
+
+@keyframes site-note-in {
+  from {
+    opacity: 0;
+    transform: translate3d(14px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Figures on /about: the counter sits on a rule, so the number reads as a
+   measurement rather than as marketing. */
+.site-figure {
+  border-block-start: 2px solid var(--line-strong);
+  padding-block-start: 0.6rem;
+}
+
+.site-figure-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Everything above is decoration on top of a page that must already be
+     complete without it. Under reduced motion the composed state is what
+     renders, and none of these ever start. */
+  .site-caret {
+    display: none;
+  }
+
+  .site-pop,
+  .site-fire,
+  .site-split-inner,
+  .site-note-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .site-scan::after,
+  .group:hover .site-cta-sheen {
+    animation: none;
+  }
+}
+
+/* ── The institute mark ─────────────────────────────────────────────────────
+   The logo is a fixed-palette SVG: oxblood #a50c22 with one #464749 rule. On
+   the dark canvas that measures 2.4:1 — the brand mark would sit in a hole it
+   made itself. Lifting its lightness in dark keeps the crimson identity while
+   bringing the mark to 3:1+ against `--canvas`. Light mode is untouched. */
+.dark .site-mark {
+  filter: brightness(1.5) saturate(0.92);
+}

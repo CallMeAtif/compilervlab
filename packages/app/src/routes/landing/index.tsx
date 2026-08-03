@@ -1,155 +1,262 @@
 /**
- * Landing page ("/") — the public front door.
+ * `/` — the public front door.
  *
- * Design matches the Somaiya mockup:
- * - Somaiya brand navbar
- * - Hero with soft pink gradient, badge, bold heading, two CTA buttons
- * - Features strip below the fold
+ * The thesis: this product's world is compilers, so the hero IS the compiler.
+ * `max.c` writes itself, and then SCROLL IS THE COMPILER — the page pins a
+ * WebGL stage and drives one real C function through all seven states of the
+ * pipeline: text, token cubes, a parse tree standing in space, types, quadruple
+ * slabs, a control-flow graph, x86-64. See components/site/pipeline/.
+ *
+ * Below that spectacle the same six phases are set out statically, on one spine
+ * rule, each paired with the Dragon Book section the lab cites and a link into
+ * the run that produced it. That half is the reference: it needs no JavaScript,
+ * no GPU and no scrolling to be complete, which is what makes it safe for the
+ * pinned section above to be as elaborate as it is.
+ *
+ * Every listing on this page came out of this repository's compiler — see
+ * components/site/max-program.ts. Nothing is illustrative.
  */
-import { Link } from 'react-router-dom';
-import { LandingNav } from '../../components/LandingNav';
-import { Sparkles, Code2, Play, BookOpen, Users, Shield, Cpu, Activity } from 'lucide-react';
-
-const FEATURES = [
-  {
-    icon: Code2,
-    title: 'Lexical Analysis',
-    desc: 'Input source code and watch the compiler tokenize it instantly. Understand how keywords, identifiers, and symbols are recognized.',
-  },
-  {
-    icon: Activity,
-    title: 'Syntax Parsing',
-    desc: 'Visualize Abstract Syntax Trees (AST). See how your code\'s structure is validated against formal grammar rules step-by-step.',
-  },
-  {
-    icon: Cpu,
-    title: 'Intermediate Representation',
-    desc: 'Dive deep into three-address code (TAC) and control flow graphs. See the bridge between high-level code and machine instructions.',
-  },
-  {
-    icon: Users,
-    title: 'Built for KJSIEIT Students',
-    desc: 'Exercises, graded labs and examples curated for the Compiler Construction curriculum at K J Somaiya Institute of Technology.',
-  },
-  {
-    icon: Shield,
-    title: 'Secure Somaiya Login',
-    desc: 'Access is restricted to @somaiya.edu accounts, keeping your lab environment private and institution-grade.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Modern Learning Interface',
-    desc: 'A clean, responsive tool that gets out of your way so you can focus on mastering compiler design.',
-  },
-];
+import { SiteHeader } from '../../components/site/SiteHeader';
+import { SiteFooter } from '../../components/site/SiteFooter';
+import { Artifact, PhaseSection } from '../../components/site/primitives';
+import { Reveal } from '../../components/site/Reveal';
+import { Pipeline } from '../../components/site/pipeline/Pipeline';
+import { AST_PREFIXES } from '../../components/site/pipeline/program-geometry';
+import {
+  AST_NODES,
+  BLOCKS,
+  GRAMMAR_FACTS,
+  OPT_PASSES,
+  QUADS,
+  REGISTER_ASSIGNMENT,
+  SCOPES,
+  SYMBOL_TABLE,
+} from '../../components/site/max-program';
 
 export default function LandingRoute() {
   return (
-    <div className="flex min-h-dvh flex-col bg-white font-inter">
-      <LandingNav />
+    <div className="flex min-h-dvh flex-col bg-canvas font-inter">
+      <SiteHeader />
 
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section
-        className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-20 text-center sm:py-28"
-      >
-        {/* Animated Background Mesh/Gradient */}
-        <div 
-          className="absolute inset-0 -z-10 opacity-60" 
-          style={{
-            background: 'radial-gradient(circle at 50% 0%, #fdf2f2 0%, #ffffff 70%)',
-          }} 
-        />
-        <div className="absolute inset-0 -z-10 animate-fade-in opacity-40"
-             style={{
-               backgroundImage: 'radial-gradient(circle at 15% 50%, rgba(139, 0, 0, 0.04) 0%, transparent 50%), radial-gradient(circle at 85% 30%, rgba(139, 0, 0, 0.04) 0%, transparent 50%)',
-             }}
-        />
+      <main id="main" tabIndex={-1} className="flex-1 outline-none">
+        <Pipeline />
 
-        {/* Welcome badge */}
-        <div className="mb-6 inline-flex animate-slide-up items-center gap-2 rounded-full border border-somaiya/20 bg-somaiya-light/50 px-4 py-1.5 backdrop-blur-sm" style={{ animationDelay: '0ms' }}>
-          <Sparkles className="size-4 text-somaiya" aria-hidden />
-          <span className="text-sm font-medium text-somaiya">
-            Welcome to Compiler Virtual Lab
-          </span>
-        </div>
-
-        {/* Main heading */}
-        <h1 className="mb-5 max-w-3xl animate-slide-up text-balance text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl" style={{ animationDelay: '100ms', opacity: 0 }}>
-          Transform source code
-          <br />
-          into{' '}
-          <span className="bg-gradient-to-r from-somaiya to-somaiya-dark bg-clip-text text-transparent">Executable Magic</span>
-        </h1>
-
-        {/* Subheading */}
-        <p className="mb-10 max-w-xl animate-slide-up text-balance text-base text-gray-500 sm:text-lg" style={{ animationDelay: '200ms', opacity: 0 }}>
-          Watch compilation happen step-by-step. From lexical analysis to code generation, explore the inner workings of a modern compiler directly in your browser.
-        </p>
-
-        {/* CTAs */}
-        <div className="flex animate-slide-up flex-wrap items-center justify-center gap-4" style={{ animationDelay: '300ms', opacity: 0 }}>
-          <Link
-            to="/login"
-            className="group relative flex items-center gap-2 overflow-hidden rounded-full bg-somaiya px-8 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-somaiya-dark hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-somaiya focus-visible:ring-offset-2"
-          >
-            <span>Start Building</span>
-            <Play className="size-4 transition-transform group-hover:translate-x-1" />
-          </Link>
-          <Link
-            to="/about"
-            className="rounded-full border-2 border-somaiya px-8 py-3 text-sm font-semibold text-somaiya transition-all hover:bg-somaiya/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-somaiya focus-visible:ring-offset-2"
-          >
-            Learn More
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Features ─────────────────────────────────────────────────────── */}
-      <section id="features" className="bg-white px-4 py-20 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-14 animate-slide-up text-center" style={{ animationDelay: '400ms', opacity: 0 }}>
-            <h2 className="mb-3 text-3xl font-bold text-gray-900">
-              Everything you need to master Compilers
+        {/* ── The pipeline, at rest ────────────────────────────────────── */}
+        <div className="mx-auto max-w-[84rem] px-4 pt-16 sm:px-6 sm:pt-24">
+          <Reveal className="border-t border-line pt-10 sm:pt-14">
+            <h2 className="site-heading max-w-[22ch]">
+              The same four lines, all the way down to registers.
             </h2>
-            <p className="mx-auto max-w-xl text-gray-500">
-              An all-in-one virtual lab built to support your Systems Programming and Compiler Construction coursework at KJSIEIT.
+            <p className="site-body mt-3 max-w-[58ch]">
+              Six phases, six artifacts, one program. Every listing below is what the lab produced
+              for <code>max.c</code>. Open any phase to step through the run that made it.
             </p>
-          </div>
+          </Reveal>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, desc }, idx) => (
-              <div
-                key={title}
-                className="group animate-slide-up rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-somaiya/20 hover:shadow-md"
-                style={{ animationDelay: `${500 + idx * 100}ms`, opacity: 0 }}
-              >
-                <div className="mb-4 inline-flex rounded-xl bg-somaiya-light p-3 transition-colors group-hover:bg-somaiya/10">
-                  <Icon className="size-6 text-somaiya" aria-hidden />
-                </div>
-                <h3 className="mb-2 text-base font-semibold text-gray-900">{title}</h3>
-                <p className="text-sm leading-relaxed text-gray-500">{desc}</p>
-              </div>
-            ))}
+          <div className="site-spine mt-12 flex flex-col gap-16 sm:mt-16 sm:gap-24">
+            {/* 01 ── Lexical ───────────────────────────────────────────── */}
+            <PhaseSection
+              ordinal="01"
+              name="Lexical"
+              cite="§3.8.3 · Fig 3.54"
+              href="/lab/lex"
+              title="Characters become tokens"
+              artifact={
+                <Artifact caption="symbol table · 23 tokens · 3 entries">
+                  <table className="w-full text-left tabular-nums">
+                    <thead className="text-2xs text-ink-faint">
+                      <tr>
+                        <th className="pr-4 pb-2 font-normal">id</th>
+                        <th className="pr-4 pb-2 font-normal">lexeme</th>
+                        <th className="pr-4 pb-2 font-normal">first seen</th>
+                        <th className="pb-2 font-normal">uses</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {SYMBOL_TABLE.map((s) => (
+                        <tr key={s.id} className="border-t border-line">
+                          <td className="py-1.5 pr-4 text-ink-faint">{s.id}</td>
+                          <td className="py-1.5 pr-4 text-ink">{s.lexeme}</td>
+                          <td className="py-1.5 pr-4 text-ink-muted">
+                            {s.line}:{s.col}
+                          </td>
+                          <td className="py-1.5 text-ink-muted">{s.occurrences}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Artifact>
+              }
+            >
+              The scanner takes the longest match at each position and retracts when a match fails.
+              Identifiers are interned as it goes, so the <code>a</code> in the parameter list and
+              the <code>a</code> in <code>return a</code> are one symbol seen three times — the
+              entry every later phase looks up.
+            </PhaseSection>
+
+            {/* 02 ── Syntax ────────────────────────────────────────────── */}
+            <PhaseSection
+              ordinal="02"
+              name="Syntax"
+              cite="§4.7.4 · Fig 4.43"
+              href="/lab/syntax"
+              title="Tokens become a tree"
+              artifact={
+                <Artifact caption="abstract syntax tree · 13 nodes">
+                  <div className="whitespace-pre">
+                    {AST_NODES.map((n, i) => (
+                      <div key={`${n.kind}-${i}`}>
+                        <span className="text-ink-faint">{AST_PREFIXES[i]}</span>
+                        <span className="text-ink">{n.kind}</span>
+                        {n.detail ? <span className="text-ink-muted"> {n.detail}</span> : null}
+                      </div>
+                    ))}
+                  </div>
+                </Artifact>
+              }
+            >
+              The parser is a real LALR(1) machine built by this repo's own table constructor:{' '}
+              {GRAMMAR_FACTS.canonicalLr1States} canonical LR(1) states merged by core down to{' '}
+              {GRAMMAR_FACTS.lalrStates}. Shifting and reducing over {GRAMMAR_FACTS.productions}{' '}
+              productions leaves this tree behind.
+            </PhaseSection>
+
+            {/* 03 ── Semantic ──────────────────────────────────────────── */}
+            <PhaseSection
+              ordinal="03"
+              name="Semantic"
+              cite="§2.7 · §6.5"
+              href="/lab/semantic"
+              title="Names get scopes and types"
+              artifact={
+                <Artifact caption="scope tree · 2 scopes · 3 symbols · 0 conversions">
+                  {SCOPES.map((scope) => (
+                    <div key={scope.id} style={{ paddingLeft: `${scope.id * 1.25}rem` }}>
+                      <div className="text-ink-faint">
+                        scope {scope.id} · {scope.kind}
+                        {scope.label ? ` ${scope.label}` : ''}
+                      </div>
+                      {scope.entries.map((e) => (
+                        <div key={e.name} className="pt-1 pl-5">
+                          <span className="text-ink">{e.name}</span>
+                          <span className="text-ink-faint"> : </span>
+                          <span className="text-ink-muted">{e.type}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </Artifact>
+              }
+            >
+              Each identifier is resolved to a declaration in an enclosing scope and given a type.
+              Comparing two <code>int</code>s needs no conversion here; a mixed comparison would get
+              an <code>int → float</code> widening inserted before the operator, and the lab marks
+              the node it was inserted at.
+            </PhaseSection>
+
+            {/* 04 ── Intermediate ──────────────────────────────────────── */}
+            <PhaseSection
+              ordinal="04"
+              name="Intermediate"
+              cite="§6.4 · §6.6"
+              href="/lab/ir"
+              title="The tree flattens into quadruples"
+              artifact={
+                <Artifact caption="three-address code · 6 quadruples · 0 temporaries">
+                  <div className="whitespace-pre">
+                    {QUADS.map((q) => (
+                      <div key={q.index} className="flex gap-3">
+                        <span className="w-4 shrink-0 text-right text-ink-faint tabular-nums">
+                          {q.index}
+                        </span>
+                        <span className={q.text.endsWith(':') ? 'text-ink' : 'text-ink-muted'}>
+                          {q.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </Artifact>
+              }
+            >
+              Statements become three-address instructions. The <code>if</code> emits a jump to a
+              label that does not exist yet: the quad is left with a hole, kept on a list, and
+              filled in once the target's address is known — backpatching.
+            </PhaseSection>
+
+            {/* 05 ── Optimization ──────────────────────────────────────── */}
+            <PhaseSection
+              ordinal="05"
+              name="Optimization"
+              cite="§8.4 · §9"
+              href="/lab/opt"
+              title="Quads become blocks, blocks become a graph"
+              artifact={
+                <Artifact caption="control-flow graph · 4 blocks · 6 edges · 6 passes, 0 changes">
+                  <div className="space-y-2">
+                    {BLOCKS.map((b) => (
+                      <div key={b.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <span className="text-ink">{b.id}</span>
+                        <span className="text-2xs text-ink-faint">quads {b.quads}</span>
+                        <span className="text-ink-muted">{b.body}</span>
+                        <span className="text-2xs text-ink-faint">→ {b.to.join(', ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-1.5 border-t border-line pt-3">
+                    {OPT_PASSES.map((p) => (
+                      <span
+                        key={p}
+                        className="rounded-xs border border-line px-1.5 py-0.5 text-2xs text-ink-faint"
+                      >
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </Artifact>
+              }
+            >
+              A leader starts a block, and the blocks are wired into a control-flow graph. Six
+              passes then run in order — constant folding, constant and copy propagation, common
+              subexpression elimination, loop-invariant code motion, dead-code elimination. On{' '}
+              <code>max</code> none of them finds anything to change, which is a result worth
+              reading too.
+            </PhaseSection>
+
+            {/* 06 ── Code generation ───────────────────────────────────── */}
+            <PhaseSection
+              ordinal="06"
+              name="Codegen"
+              cite="§8.8 · §7.2"
+              href="/lab/codegen"
+              title="Live ranges get coloured, quads get instructions"
+              artifact={
+                <Artifact caption="register allocation · 2 live variables · 1 edge · 0 spills">
+                  <div className="whitespace-pre">
+                    <div className="text-ink-faint">interference graph</div>
+                    <div className="mt-1 text-ink">a ── b</div>
+                    <div className="mt-4 text-ink-faint">assignment</div>
+                    {REGISTER_ASSIGNMENT.map((r) => (
+                      <div key={r.name} className="mt-1">
+                        <span className="text-ink">{r.name}</span>
+                        <span className="text-ink-faint"> → </span>
+                        <span className="text-ink">{r.reg}</span>
+                      </div>
+                    ))}
+                    <div className="mt-4 text-ink-faint">spilled: none</div>
+                  </div>
+                </Artifact>
+              }
+            >
+              Every quad selects an instruction, and overlapping live ranges become edges in an
+              interference graph. <code>a</code> and <code>b</code> are live at the same moment, so
+              they interfere and take different registers. Two colours are enough, so nothing spills
+              to the stack.
+            </PhaseSection>
           </div>
         </div>
-      </section>
+      </main>
 
-      {/* ── Footer CTA ───────────────────────────────────────────────────── */}
-      <section className="bg-somaiya px-4 py-20 text-center">
-        <h2 className="mb-4 text-3xl font-bold text-white">
-          Ready to start your learning journey?
-        </h2>
-        <p className="mb-8 text-base text-white/80">
-          Sign in with your @somaiya.edu account to access the full lab.
-        </p>
-        <Link
-          to="/login"
-          className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-3 text-sm font-semibold text-somaiya shadow-lg transition-all hover:scale-105 hover:bg-gray-50 hover:shadow-xl"
-        >
-          Get Started
-          <Play className="size-4" />
-        </Link>
-      </section>
+      <SiteFooter colophon={false} />
     </div>
   );
 }

@@ -65,6 +65,17 @@
   --somaiya-dark: #6B0000;
   --somaiya-light: #fdf2f2;
   --somaiya-pink: #f8e8e8;
+  /* Label colour ON the solid brand crimson. White measures 10.0:1 on the
+     light crimson and 5.4:1 on the dark one, so one value serves both — it is
+     a token rather than a `text-white` literal so the public pages can stay
+     free of hard-coded colours. */
+  --on-somaiya: #ffffff;
+  /* Crimson as INK. `--somaiya` is a FILL: measured on the dark canvas it is
+     3.45:1, which clears WCAG 1.4.11 for a bar or a border but not AA for a
+     word. This is the readable variant, and it moves the same way the lab's
+     `--accent-strong` does — darker in light, lighter in dark. Light 11.6:1 on
+     canvas; dark 4.8:1 on canvas and on the code well. */
+  --somaiya-strong: #6b0000;
 
   /* surfaces — `surface` is the PAGE, the sheet everything sits on; regions
      are separated by rules and whitespace, not by a lighter box on a darker
@@ -124,6 +135,8 @@
 .dark {
   --somaiya: #c0392b;
   --somaiya-dark: #a93226;
+  --on-somaiya: #ffffff;
+  --somaiya-strong: #d4574a;
   --somaiya-light: #2c1010;
   --somaiya-pink: #3b1515;
   --canvas: #0f1216;

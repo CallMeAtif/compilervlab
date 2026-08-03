@@ -6,6 +6,8 @@
 /* Inter: used by the landing page / auth pages for a clean, modern sans-serif. */
 @import '@fontsource-variable/inter';
 @import './theme.css';
+/* Public pages only (`/` and `/about`) — see the header of site.css. */
+@import './site.css';
 
 /* Dark mode = class strategy on <html> (lib/theme.tsx toggles it). */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -40,6 +42,8 @@
   --color-somaiya-dark: var(--somaiya-dark);
   --color-somaiya-light: var(--somaiya-light);
   --color-somaiya-pink: var(--somaiya-pink);
+  --color-on-somaiya: var(--on-somaiya);
+  --color-somaiya-strong: var(--somaiya-strong);
 
   /* Inter: for landing and auth pages (class: font-inter) */
   --font-inter: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;

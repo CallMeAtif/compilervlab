@@ -28,6 +28,16 @@ function vendorChunk(id: string): string | undefined {
   const pkgPath = id.split('node_modules/').pop() ?? '';
   if (/^(firebase|@firebase)\//.test(pkgPath)) return 'firebase';
   if (/^elkjs\//.test(pkgPath)) return 'elkjs';
+  // three + react-three-fiber: the public pages' 3D pipeline and the LALR merge
+  // figure, both behind React.lazy. One chunk, fetched after first paint on `/`
+  // and `/about` and never by a lab route.
+  // `zustand` MUST be named before `three`. It is a dependency of both the
+  // lab's own store and @react-three/fiber, and an unassigned dependency of a
+  // manual chunk gets absorbed into it — which silently gave every lab route a
+  // static import of the 891 kB three.js chunk. Giving it a chunk of its own
+  // lets both sides share it without either pulling the other.
+  if (/^zustand\//.test(pkgPath)) return 'state';
+  if (/^(three|@react-three\/[^/]+|its-fine|suspend-react)\//.test(pkgPath)) return 'three';
   if (
     /^(@xyflow\/[^/]+|classcat|d3-(selection|zoom|drag|transition|interpolate|color|timer|dispatch|ease|path))\//.test(
       pkgPath,
