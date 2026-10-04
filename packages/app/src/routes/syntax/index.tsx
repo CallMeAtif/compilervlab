@@ -61,6 +61,7 @@ import { Lr1TableView, SlrView } from './views/TableTraceView';
 import { LalrView } from './views/LalrView';
 import { LrParseView } from './views/LrParseView';
 import { UpstreamFailure } from './views/guards';
+import { PipelineDiagram } from '../../components/PipelineDiagram';
 
 // ── Sentence input (study grammars) ─────────────────────────────────────────
 
@@ -349,7 +350,7 @@ export default function SyntaxPhaseRoute() {
       <header className="flex flex-col gap-4">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
           <Link
-            to="/"
+            to="/lab"
             className="-ml-1 flex h-8 items-center gap-1 self-center rounded-sm px-1 font-mono text-2xs tracking-[0.1em] text-ink-muted uppercase transition-colors hover:text-ink"
           >
             <ArrowLeft aria-hidden className="size-3.5" />
@@ -431,6 +432,8 @@ export default function SyntaxPhaseRoute() {
           <LrParseView ctx={ctx} table={table} onTable={(t: LrTableChoice) => reselect({ table: t })} />
         )}
       </div>
+
+      <PipelineDiagram currentPhase="syntax" />
     </div>
   );
 }

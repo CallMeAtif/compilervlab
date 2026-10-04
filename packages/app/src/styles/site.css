@@ -604,3 +604,7 @@
 .dark .site-mark {
   filter: brightness(1.5) saturate(0.92);
 }
+
+:root:not(.dark) .site-mark {
+  filter: brightness(0) invert(1);
+}

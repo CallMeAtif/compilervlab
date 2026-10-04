@@ -15,6 +15,7 @@ import { phaseInfo } from '../lib/phases';
 import { useCompilationStore, stageInfo } from '../store/compilation';
 import { STATUS_META, StatusIcon } from './StatusBadge';
 import { usePhaseUrlState } from '../lib/urlState';
+import { PipelineDiagram } from './PipelineDiagram';
 
 export interface PhasePageProps {
   phase: Phase;
@@ -59,7 +60,7 @@ export function PhaseHeader({ phase }: { phase: Phase }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <Link
-        to="/"
+        to="/lab"
         aria-label="Back to the overview"
         className="-ml-1 flex h-8 shrink-0 items-center gap-1 self-center rounded-sm px-1 font-mono text-2xs tracking-[0.1em] text-ink-muted uppercase transition-colors hover:text-ink"
       >
@@ -186,6 +187,8 @@ export function PhasePage({ phase, nav, children }: PhasePageProps) {
       >
         {children}
       </div>
+
+      <PipelineDiagram currentPhase={phase} />
     </div>
   );
 }

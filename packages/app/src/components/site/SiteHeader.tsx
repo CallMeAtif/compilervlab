@@ -25,7 +25,7 @@ function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-      className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xs text-ink-muted transition-colors duration-[var(--dur-fast)] hover:bg-raised hover:text-ink"
+      className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xs text-white/80 dark:text-ink-muted transition-colors duration-[var(--dur-fast)] hover:bg-white/10 dark:hover:bg-raised hover:text-white dark:hover:text-ink"
     >
       {dark ? <Sun aria-hidden className="size-4.5" /> : <Moon aria-hidden className="size-4.5" />}
     </button>
@@ -35,16 +35,16 @@ function ThemeToggle() {
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   clsx(
     'relative flex min-h-11 items-center px-2 font-mono text-2xs tracking-[0.14em] uppercase transition-colors duration-[var(--dur-fast)] sm:px-3',
-    isActive ? 'text-ink' : 'text-ink-faint hover:text-ink',
+    isActive ? 'text-white dark:text-ink' : 'text-white/90 dark:text-ink-faint hover:text-white dark:hover:text-ink',
   );
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-canvas/92 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-line bg-[#9B2226] dark:bg-canvas/92 backdrop-blur">
       <a
         href="#main"
         onClick={() => document.getElementById('main')?.scrollIntoView({ block: 'start' })}
-        className="sr-only z-50 focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:flex focus:h-11 focus:items-center focus:rounded-xs focus:border focus:border-somaiya focus:bg-surface focus:px-4 focus:font-inter focus:text-sm focus:font-semibold focus:text-ink"
+        className="sr-only z-50 focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:flex focus:h-11 focus:items-center focus:rounded-xs focus:border focus:border-white dark:focus:border-somaiya focus:bg-[#9B2226] dark:focus:bg-surface focus:px-4 focus:font-inter focus:text-sm focus:font-semibold focus:text-white dark:focus:text-ink"
       >
         Skip to content
       </a>
@@ -62,7 +62,7 @@ export function SiteHeader() {
             // HEIGHT sets how much horizontal room it takes. At 375 the large
             // size pushed the nav and Sign in past the viewport edge; it scales
             // back up from `sm` where there is room for it.
-            className="site-mark h-7 w-auto sm:h-10 lg:h-12"
+            className="site-mark h-12 w-auto sm:h-16 lg:h-20"
           />
         </Link>
 
@@ -75,7 +75,7 @@ export function SiteHeader() {
                   aria-hidden
                   className={clsx(
                     'absolute inset-x-2 bottom-1 h-px sm:inset-x-3',
-                    isActive ? 'bg-somaiya' : 'bg-transparent',
+                    isActive ? 'bg-white dark:bg-somaiya' : 'bg-transparent',
                   )}
                 />
               </>
@@ -89,7 +89,7 @@ export function SiteHeader() {
                   aria-hidden
                   className={clsx(
                     'absolute inset-x-2 bottom-1 h-px sm:inset-x-3',
-                    isActive ? 'bg-somaiya' : 'bg-transparent',
+                    isActive ? 'bg-white dark:bg-somaiya' : 'bg-transparent',
                   )}
                 />
               </>
@@ -98,7 +98,7 @@ export function SiteHeader() {
           <ThemeToggle />
           <Link
             to="/login"
-            className="flex min-h-11 shrink-0 items-center rounded-xs border border-somaiya px-3 font-inter text-sm font-semibold text-somaiya-strong transition-colors duration-[var(--dur-fast)] hover:bg-somaiya hover:text-on-somaiya sm:px-4"
+            className="flex min-h-11 shrink-0 items-center rounded-xs border border-white dark:border-somaiya px-3 font-inter text-sm font-semibold text-white dark:text-somaiya-strong transition-colors duration-[var(--dur-fast)] hover:bg-white hover:text-[#9B2226] dark:hover:bg-somaiya dark:hover:text-on-somaiya sm:px-4"
           >
             Sign in
           </Link>

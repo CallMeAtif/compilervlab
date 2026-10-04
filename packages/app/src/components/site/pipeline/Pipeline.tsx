@@ -371,12 +371,8 @@ export function Pipeline() {
 
           {/* ── The advancing panel ──────────────────────────────────────── */}
           <div
+            inert={!heroGone}
             className={clsx(
-              // Stay full-width and let the inner `max-w-[84rem]` place the panel on
-              // the SAME column as the header, footer and hero. `lg:inset-x-auto`
-              // collapsed the wrapper to its content, so its static position put
-              // the card hard against the viewport edge — metres from the text
-              // column it belongs to on a wide screen.
               'pointer-events-none absolute inset-x-0 bottom-0 z-10 transition-opacity duration-500 lg:top-1/2 lg:bottom-auto lg:-translate-y-1/2',
               heroGone ? 'opacity-100' : 'opacity-0',
             )}

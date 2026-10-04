@@ -9,12 +9,12 @@ import { Cta } from './primitives';
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-line sm:mt-24">
+    <footer className="mt-16 border-t border-line sm:mt-24 bg-[#9B2226] text-white dark:bg-transparent dark:text-ink">
       <div className="mx-auto max-w-[84rem] px-4 py-14 sm:px-6 sm:py-20">
         <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
           <div>
-            <h2 className="site-heading max-w-[18ch]">Open the lab and compile something.</h2>
-            <p className="mt-3 max-w-[46ch] font-inter text-[0.9375rem] text-ink-muted">
+            <h2 className="site-heading max-w-[18ch] text-white dark:text-ink">Open the lab and compile something.</h2>
+            <p className="mt-3 max-w-[46ch] font-inter text-[0.9375rem] text-white/80 dark:text-ink-muted">
               Sign in with a @somaiya.edu account. Nothing to install — the compiler is a Web Worker
               in your browser and your source never leaves the machine.
             </p>
@@ -27,18 +27,27 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <hr className="my-10 border-0 border-t border-line sm:my-12" />
+        <hr className="my-10 border-0 border-t border-white/20 dark:border-line sm:my-12" />
 
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-          <div className="font-inter text-sm text-ink-muted">
-            <p className="font-serif text-base font-semibold text-ink">
+          <div className="font-inter text-sm text-white/80 dark:text-ink-muted">
+            <p className="font-serif text-base font-semibold text-white dark:text-ink">
               K J Somaiya Institute of Technology
             </p>
             <p className="mt-1">
               Somaiya Vidyavihar University · Vidyavihar (E), Mumbai 400 077, India
             </p>
             <p className="mt-1">
-              Built for the Systems Programming &amp; Compiler Construction course.
+              Department Of Computer Engineering
+            </p>
+            <p className="mt-1">
+              © 2022-23
+            </p>
+            <p className="mt-1">
+              Guided by: Dr Madhura Phadke
+            </p>
+            <p className="mt-1">
+              Developed by: Faizaan Pochi, Atiful Mulla
             </p>
           </div>
 

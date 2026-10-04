@@ -25,6 +25,7 @@ import { STATUS_META, StatusIcon } from '../../components/StatusBadge';
 import { phaseInfo } from '../../lib/phases';
 import { CodeStrip } from '../../components/viz/CodeStrip';
 import { usePhaseUrlState } from '../../lib/urlState';
+import { PipelineDiagram } from '../../components/PipelineDiagram';
 import { DiagnosticList, Notice } from './shared';
 import { IselTab } from './tabs/IselTab';
 import { LivenessTab } from './tabs/LivenessTab';
@@ -209,7 +210,7 @@ export default function CodegenPhaseRoute() {
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <Link
-            to="/"
+            to="/lab"
             className="-ml-1 flex h-8 shrink-0 items-center gap-1 rounded-sm px-1 font-mono text-2xs tracking-[0.1em] text-ink-muted uppercase transition-colors hover:text-ink"
           >
             <ArrowLeft aria-hidden className="size-3.5" />
@@ -298,6 +299,8 @@ export default function CodegenPhaseRoute() {
       >
         {body}
       </div>
+
+      <PipelineDiagram currentPhase="codegen" />
     </div>
   );
 }
