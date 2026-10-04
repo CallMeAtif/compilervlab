@@ -65,7 +65,7 @@ export function PipelineDiagram({ currentPhase }: { currentPhase?: Phase }) {
           const meta = STATUS_META[info.status];
           const handoff = HANDOFF[p.phase];
           const compiled = info.status !== 'pending';
-          
+
           const isHighlighted = currentPhase 
             ? (PHASES.findIndex(x => x.phase === currentPhase) + 1 === i)
             : (compiled && p.phase === 'lex');
@@ -80,14 +80,17 @@ export function PipelineDiagram({ currentPhase }: { currentPhase?: Phase }) {
                 }. ${TAGLINE[p.phase]}`}
                 className={clsx(
                   "group flex min-w-0 flex-1 flex-col gap-1 border-t-2 pt-2 pr-5 pb-1 transition-colors duration-[var(--dur-fast)] hover:border-accent",
-                  isHighlighted ? 'border-accent bg-accent/5' : 'border-line'
+                  isHighlighted ? 'border-accent' : 'border-line'
                 )}
               >
                 <span className="flex items-baseline gap-2">
                   <span aria-hidden className="font-mono text-2xs text-ink-faint tabular-nums">
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-serif text-base font-semibold text-ink group-hover:text-accent">
+                  <span className={clsx(
+                    "min-w-0 flex-1 truncate font-serif text-base font-semibold group-hover:text-accent",
+                    isHighlighted ? "text-accent" : "text-ink"
+                  )}>
                     {p.short}
                   </span>
                   <StatusMark status={info.status} />
