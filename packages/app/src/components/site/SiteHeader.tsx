@@ -81,10 +81,24 @@ export function SiteHeader() {
               </>
             )}
           </NavLink>
-          <NavLink to="/about" className={linkClass}>
+          <NavLink to="/about" end className={linkClass}>
             {({ isActive }) => (
               <>
                 About
+                <span
+                  aria-hidden
+                  className={clsx(
+                    'absolute inset-x-2 bottom-1 h-px sm:inset-x-3',
+                    isActive ? 'bg-white dark:bg-somaiya' : 'bg-transparent',
+                  )}
+                />
+              </>
+            )}
+          </NavLink>
+          <NavLink to="/about-lab" className={linkClass}>
+            {({ isActive }) => (
+              <>
+                About the Lab
                 <span
                   aria-hidden
                   className={clsx(

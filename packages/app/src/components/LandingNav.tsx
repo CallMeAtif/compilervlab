@@ -40,6 +40,7 @@ export function LandingNav() {
           </NavLink>
           <NavLink
             to="/about"
+            end
             className={({ isActive }) =>
               `rounded px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
@@ -49,6 +50,18 @@ export function LandingNav() {
             }
           >
             About
+          </NavLink>
+          <NavLink
+            to="/about-lab"
+            className={({ isActive }) =>
+              `rounded px-3 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'text-somaiya'
+                  : 'text-gray-600 hover:text-somaiya'
+              }`
+            }
+          >
+            About the Lab
           </NavLink>
           {!isAuthPage && (
             <Link

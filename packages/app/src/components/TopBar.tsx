@@ -117,7 +117,7 @@ export function TopBar() {
                             {p.short}
                           </span>
                           <StatusMark
-                            status={info.status}
+                            status={info.status === 'ok' ? 'pending' : info.status}
                             count={info.errors > 0 ? info.errors : undefined}
                           />
                           {/* Current phase = an accent rule under the name.

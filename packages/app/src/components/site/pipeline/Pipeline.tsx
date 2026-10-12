@@ -74,13 +74,20 @@ function HeroCopy() {
         style={{ animationDelay: '520ms', opacity: 0 }}
       >
         <MagneticCta to="/lab">Launch the lab</MagneticCta>
-        <MagneticCta to="/about" variant="secondary">
+        <MagneticCta to="/about-lab" variant="secondary">
           What this lab is
         </MagneticCta>
       </div>
+      <div
+        className="animate-fade-in mt-4 font-mono text-xs sm:text-sm text-ink-muted"
+        style={{ animationDelay: '600ms', animationFillMode: 'both' }}
+      >
+        <p>Guided by: Dr Madhura Phadke</p>
+        <p className="mt-0.5">Developed by: Faizaan Pochi, Atiful Mulla</p>
+      </div>
       <p
-        className="animate-fade-in mt-4 font-mono text-2xs text-ink-faint"
-        style={{ animationDelay: '620ms', animationFillMode: 'both' }}
+        className="animate-fade-in mt-3 font-mono text-2xs text-ink-faint"
+        style={{ animationDelay: '680ms', animationFillMode: 'both' }}
       >
         Sign in with a @somaiya.edu account · scroll to compile
       </p>

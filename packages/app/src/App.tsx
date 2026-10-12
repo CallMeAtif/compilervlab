@@ -34,6 +34,7 @@ const LoginRoute = lazy(() => import('./routes/login'));
 const SignUpRoute = lazy(() => import('./routes/signup'));
 const ForgotPasswordRoute = lazy(() => import('./routes/forgot-password'));
 const AboutRoute = lazy(() => import('./routes/about'));
+const AboutLabRoute = lazy(() => import('./routes/about/AboutLab'));
 
 // ── Lab phase routes (lazy, heavy) ────────────────────────────────────────────
 const LexRoute = lazy(() => import('./routes/lex'));
@@ -73,6 +74,8 @@ export default function App() {
         {/* ── Public ─────────────────────────────────────────────────────── */}
         <Route path="/" element={<LandingRoute />} />
         <Route path="/about" element={<AboutRoute />} />
+        <Route path="/about-lab" element={<AboutLabRoute />} />
+        <Route path="/about/lab" element={<AboutLabRoute />} />
         <Route path="/login" element={<LoginRoute />} />
         <Route path="/signup" element={<SignUpRoute />} />
         <Route path="/forgot-password" element={<ForgotPasswordRoute />} />

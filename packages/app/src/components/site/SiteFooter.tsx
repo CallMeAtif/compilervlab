@@ -43,12 +43,6 @@ export function SiteFooter() {
             <p className="mt-1">
               © 2022-23
             </p>
-            <p className="mt-1">
-              Guided by: Dr Madhura Phadke
-            </p>
-            <p className="mt-1">
-              Developed by: Faizaan Pochi, Atiful Mulla
-            </p>
           </div>
 
 
